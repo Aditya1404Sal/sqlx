@@ -1,6 +1,6 @@
 use either::Either;
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use futures_util::TryStreamExt;
 
 use crate::database::Database;
@@ -18,7 +18,7 @@ where
     fn fetch_many<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxStream<'e, Result<Either<DB::QueryResult, DB::Row>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<DB::QueryResult, DB::Row>, Error>>
     where
         E: 'q + Execute<'q, Self::Database>,
     {
@@ -39,7 +39,7 @@ where
     fn fetch_optional<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxFuture<'e, Result<Option<DB::Row>, Error>>
+    ) -> LocalBoxFuture<'e, Result<Option<DB::Row>, Error>>
     where
         E: 'q + Execute<'q, Self::Database>,
     {
@@ -52,7 +52,7 @@ where
         self,
         sql: &'q str,
         parameters: &'e [<Self::Database as Database>::TypeInfo],
-    ) -> BoxFuture<'e, Result<<Self::Database as Database>::Statement<'q>, Error>> {
+    ) -> LocalBoxFuture<'e, Result<<Self::Database as Database>::Statement<'q>, Error>> {
         let pool = self.clone();
 
         Box::pin(async move { pool.acquire().await?.prepare_with(sql, parameters).await })
@@ -62,7 +62,7 @@ where
     fn describe<'e, 'q: 'e>(
         self,
         sql: &'q str,
-    ) -> BoxFuture<'e, Result<Describe<Self::Database>, Error>> {
+    ) -> LocalBoxFuture<'e, Result<Describe<Self::Database>, Error>> {
         let pool = self.clone();
 
         Box::pin(async move { pool.acquire().await?.describe(sql).await })
@@ -84,7 +84,7 @@ where
 //     fn fetch_many<'e, 'q: 'e, E: 'q>(
 //         self,
 //         query: E,
-//     ) -> futures_core::stream::BoxStream<
+//     ) -> futures_core::stream::LocalBoxStream<
 //         'e,
 //         Result<
 //             either::Either<<DB as crate::database::Database>::QueryResult, DB::Row>,
@@ -102,7 +102,7 @@ where
 //     fn fetch_optional<'e, 'q: 'e, E: 'q>(
 //         self,
 //         query: E,
-//     ) -> futures_core::future::BoxFuture<'e, Result<Option<DB::Row>, crate::error::Error>>
+//     ) -> futures_core::future::LocalBoxFuture<'e, Result<Option<DB::Row>, crate::error::Error>>
 //     where
 //         'c: 'e,
 //         E: crate::executor::Execute<'q, DB>,
@@ -115,7 +115,7 @@ where
 //         self,
 //         sql: &'q str,
 //         parameters: &'e [<DB as crate::database::Database>::TypeInfo],
-//     ) -> futures_core::future::BoxFuture<
+//     ) -> futures_core::future::LocalBoxFuture<
 //         'e,
 //         Result<<DB as crate::database::Database>::Statement<'q>, crate::error::Error>,
 //     >
@@ -130,7 +130,7 @@ where
 //     fn describe<'e, 'q: 'e>(
 //         self,
 //         sql: &'q str,
-//     ) -> futures_core::future::BoxFuture<
+//     ) -> futures_core::future::LocalBoxFuture<
 //         'e,
 //         Result<crate::describe::Describe<DB>, crate::error::Error>,
 //     >

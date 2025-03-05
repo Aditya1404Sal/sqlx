@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter};
 use std::ops::{Deref, DerefMut};
 
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use crate::database::Database;
 use crate::error::Error;
@@ -18,17 +18,17 @@ pub trait TransactionManager {
     /// Begin a new transaction or establish a savepoint within the active transaction.
     fn begin(
         conn: &mut <Self::Database as Database>::Connection,
-    ) -> BoxFuture<'_, Result<(), Error>>;
+    ) -> LocalBoxFuture<'_, Result<(), Error>>;
 
     /// Commit the active transaction or release the most recent savepoint.
     fn commit(
         conn: &mut <Self::Database as Database>::Connection,
-    ) -> BoxFuture<'_, Result<(), Error>>;
+    ) -> LocalBoxFuture<'_, Result<(), Error>>;
 
     /// Abort the active transaction or restore from the most recent savepoint.
     fn rollback(
         conn: &mut <Self::Database as Database>::Connection,
-    ) -> BoxFuture<'_, Result<(), Error>>;
+    ) -> LocalBoxFuture<'_, Result<(), Error>>;
 
     /// Starts to abort the active transaction or restore from the most recent snapshot.
     fn start_rollback(conn: &mut <Self::Database as Database>::Connection);
@@ -83,7 +83,7 @@ where
     #[doc(hidden)]
     pub fn begin(
         conn: impl Into<MaybePoolConnection<'c, DB>>,
-    ) -> BoxFuture<'c, Result<Self, Error>> {
+    ) -> LocalBoxFuture<'c, Result<Self, Error>> {
         let mut conn = conn.into();
 
         Box::pin(async move {
@@ -126,7 +126,7 @@ where
 //     fn fetch_many<'e, 'q: 'e, E: 'q>(
 //         self,
 //         query: E,
-//     ) -> futures_core::stream::BoxStream<
+//     ) -> futures_core::stream::LocalBoxStream<
 //         'e,
 //         Result<
 //             crate::Either<<DB as crate::database::Database>::QueryResult, DB::Row>,
@@ -143,7 +143,7 @@ where
 //     fn fetch_optional<'e, 'q: 'e, E: 'q>(
 //         self,
 //         query: E,
-//     ) -> futures_core::future::BoxFuture<'e, Result<Option<DB::Row>, crate::error::Error>>
+//     ) -> futures_core::future::LocalBoxFuture<'e, Result<Option<DB::Row>, crate::error::Error>>
 //     where
 //         't: 'e,
 //         E: crate::executor::Execute<'q, Self::Database>,
@@ -155,7 +155,7 @@ where
 //         self,
 //         sql: &'q str,
 //         parameters: &'e [<Self::Database as crate::database::Database>::TypeInfo],
-//     ) -> futures_core::future::BoxFuture<
+//     ) -> futures_core::future::LocalBoxFuture<
 //         'e,
 //         Result<
 //             <Self::Database as crate::database::Database>::Statement<'q>,
@@ -172,7 +172,7 @@ where
 //     fn describe<'e, 'q: 'e>(
 //         self,
 //         query: &'q str,
-//     ) -> futures_core::future::BoxFuture<
+//     ) -> futures_core::future::LocalBoxFuture<
 //         'e,
 //         Result<crate::describe::Describe<Self::Database>, crate::error::Error>,
 //     >
@@ -231,12 +231,12 @@ impl<'c, 't, DB: Database> crate::acquire::Acquire<'t> for &'t mut Transaction<'
     type Connection = &'t mut <DB as Database>::Connection;
 
     #[inline]
-    fn acquire(self) -> BoxFuture<'t, Result<Self::Connection, Error>> {
+    fn acquire(self) -> LocalBoxFuture<'t, Result<Self::Connection, Error>> {
         Box::pin(futures_util::future::ok(&mut **self))
     }
 
     #[inline]
-    fn begin(self) -> BoxFuture<'t, Result<Transaction<'t, DB>, Error>> {
+    fn begin(self) -> LocalBoxFuture<'t, Result<Transaction<'t, DB>, Error>> {
         Transaction::begin(&mut **self)
     }
 }

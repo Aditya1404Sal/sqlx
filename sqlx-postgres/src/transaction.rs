@@ -1,4 +1,4 @@
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use crate::error::Error;
 use crate::executor::Executor;
@@ -13,7 +13,7 @@ pub struct PgTransactionManager;
 impl TransactionManager for PgTransactionManager {
     type Database = Postgres;
 
-    fn begin(conn: &mut PgConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn begin(conn: &mut PgConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let rollback = Rollback::new(conn);
             let query = begin_ansi_transaction_sql(rollback.conn.inner.transaction_depth);
@@ -26,7 +26,7 @@ impl TransactionManager for PgTransactionManager {
         })
     }
 
-    fn commit(conn: &mut PgConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn commit(conn: &mut PgConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             if conn.inner.transaction_depth > 0 {
                 conn.execute(&*commit_ansi_transaction_sql(conn.inner.transaction_depth))
@@ -39,7 +39,7 @@ impl TransactionManager for PgTransactionManager {
         })
     }
 
-    fn rollback(conn: &mut PgConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn rollback(conn: &mut PgConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             if conn.inner.transaction_depth > 0 {
                 conn.execute(&*rollback_ansi_transaction_sql(

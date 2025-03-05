@@ -12,8 +12,8 @@ use crate::{
     statement::PgStatement, PgArguments, PgConnection, PgQueryResult, PgRow, PgTypeInfo,
     PgValueFormat, Postgres,
 };
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use futures_core::Stream;
 use futures_util::TryStreamExt;
 use sqlx_core::arguments::Arguments;
@@ -377,7 +377,7 @@ impl<'c> Executor<'c> for &'c mut PgConnection {
     fn fetch_many<'e, 'q, E>(
         self,
         mut query: E,
-    ) -> BoxStream<'e, Result<Either<PgQueryResult, PgRow>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<PgQueryResult, PgRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
@@ -403,7 +403,10 @@ impl<'c> Executor<'c> for &'c mut PgConnection {
         })
     }
 
-    fn fetch_optional<'e, 'q, E>(self, mut query: E) -> BoxFuture<'e, Result<Option<PgRow>, Error>>
+    fn fetch_optional<'e, 'q, E>(
+        self,
+        mut query: E,
+    ) -> LocalBoxFuture<'e, Result<Option<PgRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
@@ -440,7 +443,7 @@ impl<'c> Executor<'c> for &'c mut PgConnection {
         self,
         sql: &'q str,
         parameters: &'e [PgTypeInfo],
-    ) -> BoxFuture<'e, Result<PgStatement<'q>, Error>>
+    ) -> LocalBoxFuture<'e, Result<PgStatement<'q>, Error>>
     where
         'c: 'e,
     {
@@ -459,7 +462,7 @@ impl<'c> Executor<'c> for &'c mut PgConnection {
     fn describe<'e, 'q: 'e>(
         self,
         sql: &'q str,
-    ) -> BoxFuture<'e, Result<Describe<Self::Database>, Error>>
+    ) -> LocalBoxFuture<'e, Result<Describe<Self::Database>, Error>>
     where
         'c: 'e,
     {

@@ -2,8 +2,8 @@ use crate::{
     Either, Sqlite, SqliteArgumentValue, SqliteArguments, SqliteColumn, SqliteConnectOptions,
     SqliteConnection, SqliteQueryResult, SqliteRow, SqliteTransactionManager, SqliteTypeInfo,
 };
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use futures_util::{StreamExt, TryFutureExt, TryStreamExt};
 
 use sqlx_core::any::{
@@ -26,27 +26,27 @@ impl AnyConnectionBackend for SqliteConnection {
         <Sqlite as Database>::NAME
     }
 
-    fn close(self: Box<Self>) -> BoxFuture<'static, sqlx_core::Result<()>> {
+    fn close(self: Box<Self>) -> LocalBoxFuture<'static, sqlx_core::Result<()>> {
         Connection::close(*self)
     }
 
-    fn close_hard(self: Box<Self>) -> BoxFuture<'static, sqlx_core::Result<()>> {
+    fn close_hard(self: Box<Self>) -> LocalBoxFuture<'static, sqlx_core::Result<()>> {
         Connection::close_hard(*self)
     }
 
-    fn ping(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn ping(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         Connection::ping(self)
     }
 
-    fn begin(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn begin(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         SqliteTransactionManager::begin(self)
     }
 
-    fn commit(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn commit(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         SqliteTransactionManager::commit(self)
     }
 
-    fn rollback(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn rollback(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         SqliteTransactionManager::rollback(self)
     }
 
@@ -58,7 +58,7 @@ impl AnyConnectionBackend for SqliteConnection {
         // NO-OP.
     }
 
-    fn flush(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn flush(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         Connection::flush(self)
     }
 
@@ -78,7 +78,7 @@ impl AnyConnectionBackend for SqliteConnection {
         query: &'q str,
         persistent: bool,
         arguments: Option<AnyArguments<'q>>,
-    ) -> BoxStream<'q, sqlx_core::Result<Either<AnyQueryResult, AnyRow>>> {
+    ) -> LocalBoxStream<'q, sqlx_core::Result<Either<AnyQueryResult, AnyRow>>> {
         let persistent = persistent && arguments.is_some();
         let args = arguments.map(map_arguments);
 
@@ -101,7 +101,7 @@ impl AnyConnectionBackend for SqliteConnection {
         query: &'q str,
         persistent: bool,
         arguments: Option<AnyArguments<'q>>,
-    ) -> BoxFuture<'q, sqlx_core::Result<Option<AnyRow>>> {
+    ) -> LocalBoxFuture<'q, sqlx_core::Result<Option<AnyRow>>> {
         let persistent = persistent && arguments.is_some();
         let args = arguments.map(map_arguments);
 
@@ -125,14 +125,17 @@ impl AnyConnectionBackend for SqliteConnection {
         &'c mut self,
         sql: &'q str,
         _parameters: &[AnyTypeInfo],
-    ) -> BoxFuture<'c, sqlx_core::Result<AnyStatement<'q>>> {
+    ) -> LocalBoxFuture<'c, sqlx_core::Result<AnyStatement<'q>>> {
         Box::pin(async move {
             let statement = Executor::prepare_with(self, sql, &[]).await?;
             AnyStatement::try_from_statement(sql, &statement, statement.column_names.clone())
         })
     }
 
-    fn describe<'q>(&'q mut self, sql: &'q str) -> BoxFuture<'q, sqlx_core::Result<Describe<Any>>> {
+    fn describe<'q>(
+        &'q mut self,
+        sql: &'q str,
+    ) -> LocalBoxFuture<'q, sqlx_core::Result<Describe<Any>>> {
         Box::pin(async move { Executor::describe(self, sql).await?.try_into_any() })
     }
 }

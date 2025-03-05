@@ -3,7 +3,7 @@ use crate::database::Database;
 use crate::error::Error;
 use crate::pool::inner::PoolInner;
 use crate::pool::Pool;
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use log::LevelFilter;
 use std::fmt::{self, Debug, Formatter};
 use std::sync::Arc;
@@ -35,7 +35,7 @@ use std::time::{Duration, Instant};
 /// It's possible to make this work with a custom trait, but it's fiddly and requires naming
 ///  the type of the closure parameter.
 ///
-/// Having the closure return `BoxFuture` allows us to work around this, as all the type information
+/// Having the closure return `LocalBoxFuture` allows us to work around this, as all the type information
 /// fits into a single generic parameter.
 ///
 /// We still need to `Box` the future internally to give it a concrete type to avoid leaking a type
@@ -46,7 +46,10 @@ pub struct PoolOptions<DB: Database> {
     pub(crate) test_before_acquire: bool,
     pub(crate) after_connect: Option<
         Arc<
-            dyn Fn(&mut DB::Connection, PoolConnectionMetadata) -> BoxFuture<'_, Result<(), Error>>
+            dyn Fn(
+                    &mut DB::Connection,
+                    PoolConnectionMetadata,
+                ) -> LocalBoxFuture<'_, Result<(), Error>>
                 + 'static
                 + Send
                 + Sync,
@@ -57,7 +60,7 @@ pub struct PoolOptions<DB: Database> {
             dyn Fn(
                     &mut DB::Connection,
                     PoolConnectionMetadata,
-                ) -> BoxFuture<'_, Result<bool, Error>>
+                ) -> LocalBoxFuture<'_, Result<bool, Error>>
                 + 'static
                 + Send
                 + Sync,
@@ -68,7 +71,7 @@ pub struct PoolOptions<DB: Database> {
             dyn Fn(
                     &mut DB::Connection,
                     PoolConnectionMetadata,
-                ) -> BoxFuture<'_, Result<bool, Error>>
+                ) -> LocalBoxFuture<'_, Result<bool, Error>>
                 + 'static
                 + Send
                 + Sync,
@@ -381,7 +384,10 @@ impl<DB: Database> PoolOptions<DB> {
     where
         // We're passing the `PoolConnectionMetadata` here mostly for future-proofing.
         // `age` and `idle_for` are obviously not useful for fresh connections.
-        for<'c> F: Fn(&'c mut DB::Connection, PoolConnectionMetadata) -> BoxFuture<'c, Result<(), Error>>
+        for<'c> F: Fn(
+                &'c mut DB::Connection,
+                PoolConnectionMetadata,
+            ) -> LocalBoxFuture<'c, Result<(), Error>>
             + 'static
             + Send
             + Sync,
@@ -434,7 +440,10 @@ impl<DB: Database> PoolOptions<DB> {
     /// For a discussion on why `Box::pin()` is required, see [the type-level docs][Self].
     pub fn before_acquire<F>(mut self, callback: F) -> Self
     where
-        for<'c> F: Fn(&'c mut DB::Connection, PoolConnectionMetadata) -> BoxFuture<'c, Result<bool, Error>>
+        for<'c> F: Fn(
+                &'c mut DB::Connection,
+                PoolConnectionMetadata,
+            ) -> LocalBoxFuture<'c, Result<bool, Error>>
             + 'static
             + Send
             + Sync,
@@ -491,7 +500,10 @@ impl<DB: Database> PoolOptions<DB> {
     /// # }
     pub fn after_release<F>(mut self, callback: F) -> Self
     where
-        for<'c> F: Fn(&'c mut DB::Connection, PoolConnectionMetadata) -> BoxFuture<'c, Result<bool, Error>>
+        for<'c> F: Fn(
+                &'c mut DB::Connection,
+                PoolConnectionMetadata,
+            ) -> LocalBoxFuture<'c, Result<bool, Error>>
             + 'static
             + Send
             + Sync,

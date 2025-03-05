@@ -7,7 +7,7 @@ use std::panic::catch_unwind;
 use std::ptr;
 use std::ptr::NonNull;
 
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use futures_intrusive::sync::MutexGuard;
 use futures_util::future;
 use libsqlite3_sys::{
@@ -218,7 +218,7 @@ impl Connection for SqliteConnection {
 
     type Options = SqliteConnectOptions;
 
-    fn close(mut self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close(mut self) -> LocalBoxFuture<'static, Result<(), Error>> {
         Box::pin(async move {
             if let OptimizeOnClose::Enabled { analysis_limit } = self.optimize_on_close {
                 let mut pragma_string = String::new();
@@ -237,7 +237,7 @@ impl Connection for SqliteConnection {
         })
     }
 
-    fn close_hard(self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close_hard(self) -> LocalBoxFuture<'static, Result<(), Error>> {
         Box::pin(async move {
             drop(self);
             Ok(())
@@ -245,11 +245,11 @@ impl Connection for SqliteConnection {
     }
 
     /// Ensure the background worker thread is alive and accepting commands.
-    fn ping(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn ping(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(self.worker.ping())
     }
 
-    fn begin(&mut self) -> BoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
+    fn begin(&mut self) -> LocalBoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
     where
         Self: Sized,
     {
@@ -263,7 +263,7 @@ impl Connection for SqliteConnection {
             .load(std::sync::atomic::Ordering::Acquire)
     }
 
-    fn clear_cached_statements(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn clear_cached_statements(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             self.worker.clear_cache().await?;
             Ok(())
@@ -276,7 +276,7 @@ impl Connection for SqliteConnection {
     }
 
     #[doc(hidden)]
-    fn flush(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn flush(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         // For SQLite, FLUSH does effectively nothing...
         // Well, we could use this to ensure that the command channel has been cleared,
         // but it would only develop a backlog if a lot of queries are executed and then cancelled

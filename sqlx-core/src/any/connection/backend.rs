@@ -1,8 +1,8 @@
 use crate::any::{Any, AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use crate::describe::Describe;
 use either::Either;
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use std::fmt::Debug;
 
 pub trait AnyConnectionBackend: std::any::Any + Debug + Send + 'static {
@@ -14,23 +14,23 @@ pub trait AnyConnectionBackend: std::any::Any + Debug + Send + 'static {
     /// This method is **not required** for safe and consistent operation. However, it is
     /// recommended to call it instead of letting a connection `drop` as the database backend
     /// will be faster at cleaning up resources.
-    fn close(self: Box<Self>) -> BoxFuture<'static, crate::Result<()>>;
+    fn close(self: Box<Self>) -> LocalBoxFuture<'static, crate::Result<()>>;
 
     /// Immediately close the connection without sending a graceful shutdown.
     ///
     /// This should still at least send a TCP `FIN` frame to let the server know we're dying.
     #[doc(hidden)]
-    fn close_hard(self: Box<Self>) -> BoxFuture<'static, crate::Result<()>>;
+    fn close_hard(self: Box<Self>) -> LocalBoxFuture<'static, crate::Result<()>>;
 
     /// Checks if a connection to the database is still valid.
-    fn ping(&mut self) -> BoxFuture<'_, crate::Result<()>>;
+    fn ping(&mut self) -> LocalBoxFuture<'_, crate::Result<()>>;
 
     /// Begin a new transaction or establish a savepoint within the active transaction.
-    fn begin(&mut self) -> BoxFuture<'_, crate::Result<()>>;
+    fn begin(&mut self) -> LocalBoxFuture<'_, crate::Result<()>>;
 
-    fn commit(&mut self) -> BoxFuture<'_, crate::Result<()>>;
+    fn commit(&mut self) -> LocalBoxFuture<'_, crate::Result<()>>;
 
-    fn rollback(&mut self) -> BoxFuture<'_, crate::Result<()>>;
+    fn rollback(&mut self) -> LocalBoxFuture<'_, crate::Result<()>>;
 
     fn start_rollback(&mut self);
 
@@ -41,7 +41,7 @@ pub trait AnyConnectionBackend: std::any::Any + Debug + Send + 'static {
 
     /// Removes all statements from the cache, closing them on the server if
     /// needed.
-    fn clear_cached_statements(&mut self) -> BoxFuture<'_, crate::Result<()>> {
+    fn clear_cached_statements(&mut self) -> LocalBoxFuture<'_, crate::Result<()>> {
         Box::pin(async move { Ok(()) })
     }
 
@@ -51,7 +51,7 @@ pub trait AnyConnectionBackend: std::any::Any + Debug + Send + 'static {
     fn shrink_buffers(&mut self);
 
     #[doc(hidden)]
-    fn flush(&mut self) -> BoxFuture<'_, crate::Result<()>>;
+    fn flush(&mut self) -> LocalBoxFuture<'_, crate::Result<()>>;
 
     #[doc(hidden)]
     fn should_flush(&self) -> bool;
@@ -72,20 +72,21 @@ pub trait AnyConnectionBackend: std::any::Any + Debug + Send + 'static {
         query: &'q str,
         persistent: bool,
         arguments: Option<AnyArguments<'q>>,
-    ) -> BoxStream<'q, crate::Result<Either<AnyQueryResult, AnyRow>>>;
+    ) -> LocalBoxStream<'q, crate::Result<Either<AnyQueryResult, AnyRow>>>;
 
     fn fetch_optional<'q>(
         &'q mut self,
         query: &'q str,
         persistent: bool,
         arguments: Option<AnyArguments<'q>>,
-    ) -> BoxFuture<'q, crate::Result<Option<AnyRow>>>;
+    ) -> LocalBoxFuture<'q, crate::Result<Option<AnyRow>>>;
 
     fn prepare_with<'c, 'q: 'c>(
         &'c mut self,
         sql: &'q str,
         parameters: &[AnyTypeInfo],
-    ) -> BoxFuture<'c, crate::Result<AnyStatement<'q>>>;
+    ) -> LocalBoxFuture<'c, crate::Result<AnyStatement<'q>>>;
 
-    fn describe<'q>(&'q mut self, sql: &'q str) -> BoxFuture<'q, crate::Result<Describe<Any>>>;
+    fn describe<'q>(&'q mut self, sql: &'q str)
+        -> LocalBoxFuture<'q, crate::Result<Describe<Any>>>;
 }

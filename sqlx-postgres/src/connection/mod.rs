@@ -2,7 +2,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::sync::Arc;
 
 use crate::HashMap;
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use futures_util::FutureExt;
 
 use crate::common::StatementCache;
@@ -140,7 +140,7 @@ impl Connection for PgConnection {
 
     type Options = PgConnectOptions;
 
-    fn close(mut self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close(mut self) -> LocalBoxFuture<'static, Result<(), Error>> {
         // The normal, graceful termination procedure is that the frontend sends a Terminate
         // message and immediately closes the connection.
 
@@ -155,7 +155,7 @@ impl Connection for PgConnection {
         })
     }
 
-    fn close_hard(mut self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close_hard(mut self) -> LocalBoxFuture<'static, Result<(), Error>> {
         Box::pin(async move {
             self.inner.stream.shutdown().await?;
 
@@ -163,10 +163,10 @@ impl Connection for PgConnection {
         })
     }
 
-    fn ping(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn ping(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         // Users were complaining about this showing up in query statistics on the server.
         // By sending a comment we avoid an error if the connection was in the middle of a rowset
-        // self.execute("/* SQLx ping */").map_ok(|_| ()).boxed()
+        // self.execute("/* SQLx ping */").map_ok(|_| ()).boxed_local()
 
         Box::pin(async move {
             // The simplest call-and-response that's possible.
@@ -175,7 +175,7 @@ impl Connection for PgConnection {
         })
     }
 
-    fn begin(&mut self) -> BoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
+    fn begin(&mut self) -> LocalBoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
     where
         Self: Sized,
     {
@@ -186,7 +186,7 @@ impl Connection for PgConnection {
         self.inner.cache_statement.len()
     }
 
-    fn clear_cached_statements(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn clear_cached_statements(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             self.inner.cache_type_oid.clear();
 
@@ -216,8 +216,8 @@ impl Connection for PgConnection {
     }
 
     #[doc(hidden)]
-    fn flush(&mut self) -> BoxFuture<'_, Result<(), Error>> {
-        self.wait_until_ready().boxed()
+    fn flush(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
+        self.wait_until_ready().boxed_local()
     }
 
     #[doc(hidden)]

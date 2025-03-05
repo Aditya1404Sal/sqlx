@@ -3,8 +3,8 @@ use std::io;
 use std::str::from_utf8;
 
 use futures_channel::mpsc;
-use futures_core::future::BoxFuture;
-use futures_core::stream::{BoxStream, Stream};
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::{LocalBoxStream, Stream};
 use futures_util::{FutureExt, StreamExt, TryFutureExt, TryStreamExt};
 use sqlx_core::acquire::Acquire;
 use sqlx_core::transaction::Transaction;
@@ -376,12 +376,12 @@ impl<'c> Acquire<'c> for &'c mut PgListener {
     type Database = Postgres;
     type Connection = &'c mut PgConnection;
 
-    fn acquire(self) -> BoxFuture<'c, Result<Self::Connection, Error>> {
-        self.connection().boxed()
+    fn acquire(self) -> LocalBoxFuture<'c, Result<Self::Connection, Error>> {
+        self.connection().boxed_local()
     }
 
-    fn begin(self) -> BoxFuture<'c, Result<Transaction<'c, Self::Database>, Error>> {
-        self.connection().and_then(|c| c.begin()).boxed()
+    fn begin(self) -> LocalBoxFuture<'c, Result<Transaction<'c, Self::Database>, Error>> {
+        self.connection().and_then(|c| c.begin()).boxed_local()
     }
 }
 
@@ -391,7 +391,7 @@ impl<'c> Executor<'c> for &'c mut PgListener {
     fn fetch_many<'e, 'q, E>(
         self,
         query: E,
-    ) -> BoxStream<'e, Result<Either<PgQueryResult, PgRow>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<PgQueryResult, PgRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
@@ -404,24 +404,24 @@ impl<'c> Executor<'c> for &'c mut PgListener {
             res
         })
         .try_flatten()
-        .boxed()
+        .boxed_local()
     }
 
-    fn fetch_optional<'e, 'q, E>(self, query: E) -> BoxFuture<'e, Result<Option<PgRow>, Error>>
+    fn fetch_optional<'e, 'q, E>(self, query: E) -> LocalBoxFuture<'e, Result<Option<PgRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
         'q: 'e,
         E: 'q,
     {
-        async move { self.connection().await?.fetch_optional(query).await }.boxed()
+        async move { self.connection().await?.fetch_optional(query).await }.boxed_local()
     }
 
     fn prepare_with<'e, 'q: 'e>(
         self,
         query: &'q str,
         parameters: &'e [PgTypeInfo],
-    ) -> BoxFuture<'e, Result<PgStatement<'q>, Error>>
+    ) -> LocalBoxFuture<'e, Result<PgStatement<'q>, Error>>
     where
         'c: 'e,
     {
@@ -431,18 +431,18 @@ impl<'c> Executor<'c> for &'c mut PgListener {
                 .prepare_with(query, parameters)
                 .await
         }
-        .boxed()
+        .boxed_local()
     }
 
     #[doc(hidden)]
     fn describe<'e, 'q: 'e>(
         self,
         query: &'q str,
-    ) -> BoxFuture<'e, Result<Describe<Self::Database>, Error>>
+    ) -> LocalBoxFuture<'e, Result<Describe<Self::Database>, Error>>
     where
         'c: 'e,
     {
-        async move { self.connection().await?.describe(query).await }.boxed()
+        async move { self.connection().await?.describe(query).await }.boxed_local()
     }
 }
 

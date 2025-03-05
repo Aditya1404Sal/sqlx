@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::time::Duration;
 
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 pub use fixtures::FixtureSnapshot;
@@ -26,9 +26,9 @@ pub trait TestSupport: Database {
     ///
     /// The implementation may require `DATABASE_URL` to be set in order to manage databases.
     /// The user credentials it contains must have the privilege to create and drop databases.
-    fn test_context(args: &TestArgs) -> BoxFuture<'_, Result<TestContext<Self>, Error>>;
+    fn test_context(args: &TestArgs) -> LocalBoxFuture<'_, Result<TestContext<Self>, Error>>;
 
-    fn cleanup_test(db_name: &str) -> BoxFuture<'_, Result<(), Error>>;
+    fn cleanup_test(db_name: &str) -> LocalBoxFuture<'_, Result<(), Error>>;
 
     /// Cleanup any test databases that are no longer in-use.
     ///
@@ -36,13 +36,14 @@ pub trait TestSupport: Database {
     ///
     /// The implementation may require `DATABASE_URL` to be set in order to manage databases.
     /// The user credentials it contains must have the privilege to create and drop databases.
-    fn cleanup_test_dbs() -> BoxFuture<'static, Result<Option<usize>, Error>>;
+    fn cleanup_test_dbs() -> LocalBoxFuture<'static, Result<Option<usize>, Error>>;
 
     /// Take a snapshot of the current state of the database (data only).
     ///
     /// This snapshot can then be used to generate test fixtures.
-    fn snapshot(conn: &mut Self::Connection)
-        -> BoxFuture<'_, Result<FixtureSnapshot<Self>, Error>>;
+    fn snapshot(
+        conn: &mut Self::Connection,
+    ) -> LocalBoxFuture<'_, Result<FixtureSnapshot<Self>, Error>>;
 
     /// Generate a unique database name for the given test path.
     fn db_name(args: &TestArgs) -> String {

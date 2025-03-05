@@ -1,5 +1,5 @@
 use crate::{SqliteConnectOptions, SqliteConnection};
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use log::LevelFilter;
 use sqlx_core::connection::ConnectOptions;
 use sqlx_core::error::Error;
@@ -28,7 +28,7 @@ impl ConnectOptions for SqliteConnectOptions {
         self.build_url()
     }
 
-    fn connect(&self) -> BoxFuture<'_, Result<Self::Connection, Error>>
+    fn connect(&self) -> LocalBoxFuture<'_, Result<Self::Connection, Error>>
     where
         Self::Connection: Sized,
     {

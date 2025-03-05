@@ -1,4 +1,4 @@
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use crate::connection::Waiting;
 use crate::error::Error;
@@ -14,7 +14,7 @@ pub struct MySqlTransactionManager;
 impl TransactionManager for MySqlTransactionManager {
     type Database = MySql;
 
-    fn begin(conn: &mut MySqlConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn begin(conn: &mut MySqlConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let depth = conn.inner.transaction_depth;
 
@@ -25,7 +25,7 @@ impl TransactionManager for MySqlTransactionManager {
         })
     }
 
-    fn commit(conn: &mut MySqlConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn commit(conn: &mut MySqlConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let depth = conn.inner.transaction_depth;
 
@@ -38,7 +38,7 @@ impl TransactionManager for MySqlTransactionManager {
         })
     }
 
-    fn rollback(conn: &mut MySqlConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn rollback(conn: &mut MySqlConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let depth = conn.inner.transaction_depth;
 

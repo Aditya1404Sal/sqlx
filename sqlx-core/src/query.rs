@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use either::Either;
-use futures_core::stream::BoxStream;
+use futures_core::stream::LocalBoxStream;
 use futures_util::{future, StreamExt, TryFutureExt, TryStreamExt};
 
 use crate::arguments::{Arguments, IntoArguments};
@@ -196,7 +196,7 @@ where
     pub async fn execute_many<'e, 'c: 'e, E>(
         self,
         executor: E,
-    ) -> BoxStream<'e, Result<DB::QueryResult, Error>>
+    ) -> LocalBoxStream<'e, Result<DB::QueryResult, Error>>
     where
         'q: 'e,
         A: 'e,
@@ -207,7 +207,7 @@ where
 
     /// Execute the query and return the generated results as a stream.
     #[inline]
-    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> BoxStream<'e, Result<DB::Row, Error>>
+    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> LocalBoxStream<'e, Result<DB::Row, Error>>
     where
         'q: 'e,
         A: 'e,
@@ -226,7 +226,7 @@ where
     pub fn fetch_many<'e, 'c: 'e, E>(
         self,
         executor: E,
-    ) -> BoxStream<'e, Result<Either<DB::QueryResult, DB::Row>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<DB::QueryResult, DB::Row>, Error>>
     where
         'q: 'e,
         A: 'e,
@@ -369,7 +369,7 @@ where
     }
 
     /// Execute the query and return the generated results as a stream.
-    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> BoxStream<'e, Result<O, Error>>
+    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> LocalBoxStream<'e, Result<O, Error>>
     where
         'q: 'e,
         E: 'e + Executor<'c, Database = DB>,
@@ -387,7 +387,7 @@ where
                     Either::Right(o) => Some(o),
                 })
             })
-            .boxed()
+            .boxed_local()
     }
 
     /// Execute multiple queries and return the generated results as a stream
@@ -396,7 +396,7 @@ where
     pub fn fetch_many<'e, 'c: 'e, E>(
         mut self,
         executor: E,
-    ) -> BoxStream<'e, Result<Either<DB::QueryResult, O>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<DB::QueryResult, O>, Error>>
     where
         'q: 'e,
         E: 'e + Executor<'c, Database = DB>,

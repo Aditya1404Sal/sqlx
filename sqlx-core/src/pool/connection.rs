@@ -131,7 +131,7 @@ impl<DB: Database> PoolConnection<DB> {
     ///
     /// This effectively runs the drop handler eagerly instead of spawning a task to do it.
     #[doc(hidden)]
-    pub fn return_to_pool(&mut self) -> impl Future<Output = ()> + Send + 'static {
+    pub fn return_to_pool(&mut self) -> impl Future<Output = ()> + 'static {
         // float the connection in the pool before we move into the task
         // in case the returned `Future` isn't executed, like if it's spawned into a dying runtime
         // https://github.com/launchbadge/sqlx/issues/1396
@@ -154,7 +154,7 @@ impl<DB: Database> PoolConnection<DB> {
         }
     }
 
-    fn take_and_close(&mut self) -> impl Future<Output = ()> + Send + 'static {
+    fn take_and_close(&mut self) -> impl Future<Output = ()> + 'static {
         // float the connection in the pool before we move into the task
         // in case the returned `Future` isn't executed, like if it's spawned into a dying runtime
         // https://github.com/launchbadge/sqlx/issues/1396
@@ -182,15 +182,17 @@ impl<'c, DB: Database> crate::acquire::Acquire<'c> for &'c mut PoolConnection<DB
     type Connection = &'c mut <DB as Database>::Connection;
 
     #[inline]
-    fn acquire(self) -> futures_core::future::BoxFuture<'c, Result<Self::Connection, Error>> {
+    fn acquire(self) -> futures_core::future::LocalBoxFuture<'c, Result<Self::Connection, Error>> {
         Box::pin(futures_util::future::ok(&mut **self))
     }
 
     #[inline]
     fn begin(
         self,
-    ) -> futures_core::future::BoxFuture<'c, Result<crate::transaction::Transaction<'c, DB>, Error>>
-    {
+    ) -> futures_core::future::LocalBoxFuture<
+        'c,
+        Result<crate::transaction::Transaction<'c, DB>, Error>,
+    > {
         crate::transaction::Transaction::begin(&mut **self)
     }
 }

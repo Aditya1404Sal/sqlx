@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 
 use sqlx_core::bytes::{BufMut, Bytes};
 
@@ -58,7 +58,7 @@ impl PgConnection {
     pub async fn copy_out_raw<'c>(
         &'c mut self,
         statement: &str,
-    ) -> Result<BoxStream<'c, Result<Bytes>>> {
+    ) -> Result<LocalBoxStream<'c, Result<Bytes>>> {
         pg_begin_copy_out(self, statement).await
     }
 }
@@ -86,7 +86,7 @@ pub trait PgPoolCopyExt {
     fn copy_in_raw<'a>(
         &'a self,
         statement: &'a str,
-    ) -> BoxFuture<'a, Result<PgCopyIn<PoolConnection<Postgres>>>>;
+    ) -> LocalBoxFuture<'a, Result<PgCopyIn<PoolConnection<Postgres>>>>;
 
     /// Issue a `COPY TO STDOUT` statement and begin streaming data
     /// from Postgres. This is a more efficient way to export data from Postgres but
@@ -110,21 +110,21 @@ pub trait PgPoolCopyExt {
     fn copy_out_raw<'a>(
         &'a self,
         statement: &'a str,
-    ) -> BoxFuture<'a, Result<BoxStream<'static, Result<Bytes>>>>;
+    ) -> LocalBoxFuture<'a, Result<LocalBoxStream<'static, Result<Bytes>>>>;
 }
 
 impl PgPoolCopyExt for Pool<Postgres> {
     fn copy_in_raw<'a>(
         &'a self,
         statement: &'a str,
-    ) -> BoxFuture<'a, Result<PgCopyIn<PoolConnection<Postgres>>>> {
+    ) -> LocalBoxFuture<'a, Result<PgCopyIn<PoolConnection<Postgres>>>> {
         Box::pin(async { PgCopyIn::begin(self.acquire().await?, statement).await })
     }
 
     fn copy_out_raw<'a>(
         &'a self,
         statement: &'a str,
-    ) -> BoxFuture<'a, Result<BoxStream<'static, Result<Bytes>>>> {
+    ) -> LocalBoxFuture<'a, Result<LocalBoxStream<'static, Result<Bytes>>>> {
         Box::pin(async { pg_begin_copy_out(self.acquire().await?, statement).await })
     }
 }
@@ -321,7 +321,7 @@ impl<C: DerefMut<Target = PgConnection>> Drop for PgCopyIn<C> {
 async fn pg_begin_copy_out<'c, C: DerefMut<Target = PgConnection> + Send + 'c>(
     mut conn: C,
     statement: &str,
-) -> Result<BoxStream<'c, Result<Bytes>>> {
+) -> Result<LocalBoxStream<'c, Result<Bytes>>> {
     conn.wait_until_ready().await?;
     conn.inner.stream.send(Query(statement)).await?;
 

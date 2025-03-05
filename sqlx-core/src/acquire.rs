@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::pool::{MaybePoolConnection, Pool, PoolConnection};
 
 use crate::transaction::Transaction;
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use std::ops::{Deref, DerefMut};
 
 /// Acquire connections or transactions from a database in a generic way.
@@ -75,9 +75,9 @@ pub trait Acquire<'c> {
 
     type Connection: Deref<Target = <Self::Database as Database>::Connection> + DerefMut + Send;
 
-    fn acquire(self) -> BoxFuture<'c, Result<Self::Connection, Error>>;
+    fn acquire(self) -> LocalBoxFuture<'c, Result<Self::Connection, Error>>;
 
-    fn begin(self) -> BoxFuture<'c, Result<Transaction<'c, Self::Database>, Error>>;
+    fn begin(self) -> LocalBoxFuture<'c, Result<Transaction<'c, Self::Database>, Error>>;
 }
 
 impl<'a, DB: Database> Acquire<'a> for &'_ Pool<DB> {
@@ -85,11 +85,11 @@ impl<'a, DB: Database> Acquire<'a> for &'_ Pool<DB> {
 
     type Connection = PoolConnection<DB>;
 
-    fn acquire(self) -> BoxFuture<'static, Result<Self::Connection, Error>> {
+    fn acquire(self) -> LocalBoxFuture<'static, Result<Self::Connection, Error>> {
         Box::pin(self.acquire())
     }
 
-    fn begin(self) -> BoxFuture<'static, Result<Transaction<'a, DB>, Error>> {
+    fn begin(self) -> LocalBoxFuture<'static, Result<Transaction<'a, DB>, Error>> {
         let conn = self.acquire();
 
         Box::pin(async move {
@@ -109,15 +109,17 @@ macro_rules! impl_acquire {
             #[inline]
             fn acquire(
                 self,
-            ) -> futures_core::future::BoxFuture<'c, Result<Self::Connection, $crate::error::Error>>
-            {
+            ) -> futures_core::future::LocalBoxFuture<
+                'c,
+                Result<Self::Connection, $crate::error::Error>,
+            > {
                 Box::pin(futures_util::future::ok(self))
             }
 
             #[inline]
             fn begin(
                 self,
-            ) -> futures_core::future::BoxFuture<
+            ) -> futures_core::future::LocalBoxFuture<
                 'c,
                 Result<$crate::transaction::Transaction<'c, $DB>, $crate::error::Error>,
             > {

@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::time::Duration;
 
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use once_cell::sync::OnceCell;
 use sqlx_core::connection::Connection;
@@ -22,11 +22,11 @@ pub(crate) use sqlx_core::testing::*;
 static MASTER_POOL: OnceCell<Pool<MySql>> = OnceCell::new();
 
 impl TestSupport for MySql {
-    fn test_context(args: &TestArgs) -> BoxFuture<'_, Result<TestContext<Self>, Error>> {
+    fn test_context(args: &TestArgs) -> LocalBoxFuture<'_, Result<TestContext<Self>, Error>> {
         Box::pin(async move { test_context(args).await })
     }
 
-    fn cleanup_test(db_name: &str) -> BoxFuture<'_, Result<(), Error>> {
+    fn cleanup_test(db_name: &str) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let mut conn = MASTER_POOL
                 .get()
@@ -38,7 +38,7 @@ impl TestSupport for MySql {
         })
     }
 
-    fn cleanup_test_dbs() -> BoxFuture<'static, Result<Option<usize>, Error>> {
+    fn cleanup_test_dbs() -> LocalBoxFuture<'static, Result<Option<usize>, Error>> {
         Box::pin(async move {
             let url = dotenvy::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
@@ -98,7 +98,7 @@ impl TestSupport for MySql {
 
     fn snapshot(
         _conn: &mut Self::Connection,
-    ) -> BoxFuture<'_, Result<FixtureSnapshot<Self>, Error>> {
+    ) -> LocalBoxFuture<'_, Result<FixtureSnapshot<Self>, Error>> {
         // TODO: I want to get the testing feature out the door so this will have to wait,
         // but I'm keeping the code around for now because I plan to come back to it.
         todo!()

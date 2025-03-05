@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use either::Either;
-use futures_core::stream::BoxStream;
+use futures_core::stream::LocalBoxStream;
 use futures_util::{StreamExt, TryStreamExt};
 
 use crate::arguments::IntoArguments;
@@ -86,7 +86,7 @@ where
     O: Send + Unpin + for<'r> FromRow<'r, DB::Row>,
 {
     /// Execute the query and return the generated results as a stream.
-    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> BoxStream<'e, Result<O, Error>>
+    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> LocalBoxStream<'e, Result<O, Error>>
     where
         'q: 'e,
         E: 'e + Executor<'c, Database = DB>,
@@ -99,7 +99,7 @@ where
         #[allow(deprecated)]
         self.fetch_many(executor)
             .try_filter_map(|step| async move { Ok(step.right()) })
-            .boxed()
+            .boxed_local()
     }
 
     /// Execute multiple queries and return the generated results as a stream
@@ -108,7 +108,7 @@ where
     pub fn fetch_many<'e, 'c: 'e, E>(
         self,
         executor: E,
-    ) -> BoxStream<'e, Result<Either<DB::QueryResult, O>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<DB::QueryResult, O>, Error>>
     where
         'q: 'e,
         E: 'e + Executor<'c, Database = DB>,
@@ -123,7 +123,7 @@ where
                 Ok(Either::Left(v)) => Ok(Either::Left(v)),
                 Err(e) => Err(e),
             })
-            .boxed()
+            .boxed_local()
     }
 
     /// Execute the query and return all the resulting rows collected into a [`Vec`].

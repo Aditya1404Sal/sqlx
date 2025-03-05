@@ -4,7 +4,7 @@ use crate::common::DebugFn;
 use crate::connection::Connection;
 use crate::database::Database;
 use crate::Error;
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use once_cell::sync::OnceCell;
 use std::fmt::{Debug, Formatter};
 use url::Url;
@@ -29,7 +29,7 @@ pub struct AnyDriver {
     pub(crate) name: &'static str,
     pub(crate) url_schemes: &'static [&'static str],
     pub(crate) connect:
-        DebugFn<fn(&AnyConnectOptions) -> BoxFuture<'_, crate::Result<AnyConnection>>>,
+        DebugFn<fn(&AnyConnectOptions) -> LocalBoxFuture<'_, crate::Result<AnyConnection>>>,
     pub(crate) migrate_database: Option<AnyMigrateDatabase>,
 }
 
@@ -92,26 +92,26 @@ impl Debug for AnyDriver {
 }
 
 pub struct AnyMigrateDatabase {
-    create_database: DebugFn<fn(&str) -> BoxFuture<'_, crate::Result<()>>>,
-    database_exists: DebugFn<fn(&str) -> BoxFuture<'_, crate::Result<bool>>>,
-    drop_database: DebugFn<fn(&str) -> BoxFuture<'_, crate::Result<()>>>,
-    force_drop_database: DebugFn<fn(&str) -> BoxFuture<'_, crate::Result<()>>>,
+    create_database: DebugFn<fn(&str) -> LocalBoxFuture<'_, crate::Result<()>>>,
+    database_exists: DebugFn<fn(&str) -> LocalBoxFuture<'_, crate::Result<bool>>>,
+    drop_database: DebugFn<fn(&str) -> LocalBoxFuture<'_, crate::Result<()>>>,
+    force_drop_database: DebugFn<fn(&str) -> LocalBoxFuture<'_, crate::Result<()>>>,
 }
 
 impl AnyMigrateDatabase {
-    pub fn create_database<'a>(&self, url: &'a str) -> BoxFuture<'a, crate::Result<()>> {
+    pub fn create_database<'a>(&self, url: &'a str) -> LocalBoxFuture<'a, crate::Result<()>> {
         (self.create_database)(url)
     }
 
-    pub fn database_exists<'a>(&self, url: &'a str) -> BoxFuture<'a, crate::Result<bool>> {
+    pub fn database_exists<'a>(&self, url: &'a str) -> LocalBoxFuture<'a, crate::Result<bool>> {
         (self.database_exists)(url)
     }
 
-    pub fn drop_database<'a>(&self, url: &'a str) -> BoxFuture<'a, crate::Result<()>> {
+    pub fn drop_database<'a>(&self, url: &'a str) -> LocalBoxFuture<'a, crate::Result<()>> {
         (self.drop_database)(url)
     }
 
-    pub fn force_drop_database<'a>(&self, url: &'a str) -> BoxFuture<'a, crate::Result<()>> {
+    pub fn force_drop_database<'a>(&self, url: &'a str) -> LocalBoxFuture<'a, crate::Result<()>> {
         (self.force_drop_database)(url)
     }
 }

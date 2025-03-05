@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::time::Instant;
 
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 pub(crate) use sqlx_core::migrate::*;
 
 use crate::connection::{ConnectOptions, Connection};
@@ -31,7 +31,7 @@ fn parse_for_maintenance(url: &str) -> Result<(MySqlConnectOptions, String), Err
 }
 
 impl MigrateDatabase for MySql {
-    fn create_database(url: &str) -> BoxFuture<'_, Result<(), Error>> {
+    fn create_database(url: &str) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let (options, database) = parse_for_maintenance(url)?;
             let mut conn = options.connect().await?;
@@ -44,7 +44,7 @@ impl MigrateDatabase for MySql {
         })
     }
 
-    fn database_exists(url: &str) -> BoxFuture<'_, Result<bool, Error>> {
+    fn database_exists(url: &str) -> LocalBoxFuture<'_, Result<bool, Error>> {
         Box::pin(async move {
             let (options, database) = parse_for_maintenance(url)?;
             let mut conn = options.connect().await?;
@@ -60,7 +60,7 @@ impl MigrateDatabase for MySql {
         })
     }
 
-    fn drop_database(url: &str) -> BoxFuture<'_, Result<(), Error>> {
+    fn drop_database(url: &str) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let (options, database) = parse_for_maintenance(url)?;
             let mut conn = options.connect().await?;
@@ -75,7 +75,7 @@ impl MigrateDatabase for MySql {
 }
 
 impl Migrate for MySqlConnection {
-    fn ensure_migrations_table(&mut self) -> BoxFuture<'_, Result<(), MigrateError>> {
+    fn ensure_migrations_table(&mut self) -> LocalBoxFuture<'_, Result<(), MigrateError>> {
         Box::pin(async move {
             // language=MySQL
             self.execute(
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
         })
     }
 
-    fn dirty_version(&mut self) -> BoxFuture<'_, Result<Option<i64>, MigrateError>> {
+    fn dirty_version(&mut self) -> LocalBoxFuture<'_, Result<Option<i64>, MigrateError>> {
         Box::pin(async move {
             // language=SQL
             let row: Option<(i64,)> = query_as(
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
 
     fn list_applied_migrations(
         &mut self,
-    ) -> BoxFuture<'_, Result<Vec<AppliedMigration>, MigrateError>> {
+    ) -> LocalBoxFuture<'_, Result<Vec<AppliedMigration>, MigrateError>> {
         Box::pin(async move {
             // language=SQL
             let rows: Vec<(i64, Vec<u8>)> =
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
         })
     }
 
-    fn lock(&mut self) -> BoxFuture<'_, Result<(), MigrateError>> {
+    fn lock(&mut self) -> LocalBoxFuture<'_, Result<(), MigrateError>> {
         Box::pin(async move {
             let database_name = current_database(self).await?;
             let lock_id = generate_lock_id(&database_name);
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
         })
     }
 
-    fn unlock(&mut self) -> BoxFuture<'_, Result<(), MigrateError>> {
+    fn unlock(&mut self) -> LocalBoxFuture<'_, Result<(), MigrateError>> {
         Box::pin(async move {
             let database_name = current_database(self).await?;
             let lock_id = generate_lock_id(&database_name);
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
     fn apply<'e: 'm, 'm>(
         &'e mut self,
         migration: &'m Migration,
-    ) -> BoxFuture<'m, Result<Duration, MigrateError>> {
+    ) -> LocalBoxFuture<'m, Result<Duration, MigrateError>> {
         Box::pin(async move {
             // Use a single transaction for the actual migration script and the essential bookeeping so we never
             // execute migrations twice. See https://github.com/launchbadge/sqlx/issues/1966.
@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
     fn revert<'e: 'm, 'm>(
         &'e mut self,
         migration: &'m Migration,
-    ) -> BoxFuture<'m, Result<Duration, MigrateError>> {
+    ) -> LocalBoxFuture<'m, Result<Duration, MigrateError>> {
         Box::pin(async move {
             // Use a single transaction for the actual migration script and the essential bookeeping so we never
             // execute migrations twice. See https://github.com/launchbadge/sqlx/issues/1966.

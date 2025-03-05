@@ -8,7 +8,7 @@ use crate::migrate::{Migrate, MigrateDatabase};
 use crate::query::query;
 use crate::query_as::query_as;
 use crate::{Sqlite, SqliteConnectOptions, SqliteConnection, SqliteJournalMode};
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use std::str::FromStr;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -17,7 +17,7 @@ use std::time::Instant;
 pub(crate) use sqlx_core::migrate::*;
 
 impl MigrateDatabase for Sqlite {
-    fn create_database(url: &str) -> BoxFuture<'_, Result<(), Error>> {
+    fn create_database(url: &str) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let mut opts = SqliteConnectOptions::from_str(url)?.create_if_missing(true);
 
@@ -38,7 +38,7 @@ impl MigrateDatabase for Sqlite {
         })
     }
 
-    fn database_exists(url: &str) -> BoxFuture<'_, Result<bool, Error>> {
+    fn database_exists(url: &str) -> LocalBoxFuture<'_, Result<bool, Error>> {
         Box::pin(async move {
             let options = SqliteConnectOptions::from_str(url)?;
 
@@ -50,7 +50,7 @@ impl MigrateDatabase for Sqlite {
         })
     }
 
-    fn drop_database(url: &str) -> BoxFuture<'_, Result<(), Error>> {
+    fn drop_database(url: &str) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let options = SqliteConnectOptions::from_str(url)?;
 
@@ -64,7 +64,7 @@ impl MigrateDatabase for Sqlite {
 }
 
 impl Migrate for SqliteConnection {
-    fn ensure_migrations_table(&mut self) -> BoxFuture<'_, Result<(), MigrateError>> {
+    fn ensure_migrations_table(&mut self) -> LocalBoxFuture<'_, Result<(), MigrateError>> {
         Box::pin(async move {
             // language=SQLite
             self.execute(
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
         })
     }
 
-    fn dirty_version(&mut self) -> BoxFuture<'_, Result<Option<i64>, MigrateError>> {
+    fn dirty_version(&mut self) -> LocalBoxFuture<'_, Result<Option<i64>, MigrateError>> {
         Box::pin(async move {
             // language=SQLite
             let row: Option<(i64,)> = query_as(
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
 
     fn list_applied_migrations(
         &mut self,
-    ) -> BoxFuture<'_, Result<Vec<AppliedMigration>, MigrateError>> {
+    ) -> LocalBoxFuture<'_, Result<Vec<AppliedMigration>, MigrateError>> {
         Box::pin(async move {
             // language=SQLite
             let rows: Vec<(i64, Vec<u8>)> =
@@ -120,18 +120,18 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
         })
     }
 
-    fn lock(&mut self) -> BoxFuture<'_, Result<(), MigrateError>> {
+    fn lock(&mut self) -> LocalBoxFuture<'_, Result<(), MigrateError>> {
         Box::pin(async move { Ok(()) })
     }
 
-    fn unlock(&mut self) -> BoxFuture<'_, Result<(), MigrateError>> {
+    fn unlock(&mut self) -> LocalBoxFuture<'_, Result<(), MigrateError>> {
         Box::pin(async move { Ok(()) })
     }
 
     fn apply<'e: 'm, 'm>(
         &'e mut self,
         migration: &'m Migration,
-    ) -> BoxFuture<'m, Result<Duration, MigrateError>> {
+    ) -> LocalBoxFuture<'m, Result<Duration, MigrateError>> {
         Box::pin(async move {
             let mut tx = self.begin().await?;
             let start = Instant::now();
@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrations (
     fn revert<'e: 'm, 'm>(
         &'e mut self,
         migration: &'m Migration,
-    ) -> BoxFuture<'m, Result<Duration, MigrateError>> {
+    ) -> LocalBoxFuture<'m, Result<Duration, MigrateError>> {
         Box::pin(async move {
             // Use a single transaction for the actual migration script and the essential bookeeping so we never
             // execute migrations twice. See https://github.com/launchbadge/sqlx/issues/1966.

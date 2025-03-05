@@ -8,7 +8,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use futures_core::stream::Stream;
 use futures_core::FusedFuture;
 use futures_util::future::Fuse;
@@ -18,19 +18,19 @@ use crate::error::Error;
 
 pub struct TryAsyncStream<'a, T> {
     yielder: Yielder<T>,
-    future: Fuse<BoxFuture<'a, Result<(), Error>>>,
+    future: Fuse<LocalBoxFuture<'a, Result<(), Error>>>,
 }
 
 impl<'a, T> TryAsyncStream<'a, T> {
     pub fn new<F, Fut>(f: F) -> Self
     where
-        F: FnOnce(Yielder<T>) -> Fut + Send,
-        Fut: 'a + Future<Output = Result<(), Error>> + Send,
+        F: FnOnce(Yielder<T>) -> Fut,
+        Fut: 'a + Future<Output = Result<(), Error>>,
         T: 'a + Send,
     {
         let yielder = Yielder::new();
 
-        let future = f(yielder.duplicate()).boxed().fuse();
+        let future = f(yielder.duplicate()).boxed_local().fuse();
 
         Self { future, yielder }
     }

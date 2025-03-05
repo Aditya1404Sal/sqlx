@@ -1,5 +1,5 @@
 use either::Either;
-use futures_core::stream::BoxStream;
+use futures_core::stream::LocalBoxStream;
 
 use crate::database::Database;
 use crate::error::BoxDynError;
@@ -155,7 +155,7 @@ impl<'q> RawSql<'q> {
     pub fn execute_many<'e, E>(
         self,
         executor: E,
-    ) -> BoxStream<'e, crate::Result<<E::Database as Database>::QueryResult>>
+    ) -> LocalBoxStream<'e, crate::Result<<E::Database as Database>::QueryResult>>
     where
         'q: 'e,
         E: Executor<'e>,
@@ -170,7 +170,7 @@ impl<'q> RawSql<'q> {
     pub fn fetch<'e, E>(
         self,
         executor: E,
-    ) -> BoxStream<'e, Result<<E::Database as Database>::Row, Error>>
+    ) -> LocalBoxStream<'e, Result<<E::Database as Database>::Row, Error>>
     where
         'q: 'e,
         E: Executor<'e>,
@@ -186,7 +186,7 @@ impl<'q> RawSql<'q> {
     pub fn fetch_many<'e, E>(
         self,
         executor: E,
-    ) -> BoxStream<
+    ) -> LocalBoxStream<
         'e,
         Result<
             Either<<E::Database as Database>::QueryResult, <E::Database as Database>::Row>,

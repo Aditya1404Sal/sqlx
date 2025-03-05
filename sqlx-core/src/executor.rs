@@ -3,8 +3,8 @@ use crate::describe::Describe;
 use crate::error::{BoxDynError, Error};
 
 use either::Either;
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use futures_util::{future, FutureExt, StreamExt, TryFutureExt, TryStreamExt};
 use std::fmt::Debug;
 
@@ -37,19 +37,19 @@ pub trait Executor<'c>: Send + Debug + Sized {
     fn execute<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxFuture<'e, Result<<Self::Database as Database>::QueryResult, Error>>
+    ) -> LocalBoxFuture<'e, Result<<Self::Database as Database>::QueryResult, Error>>
     where
         'c: 'e,
         E: 'q + Execute<'q, Self::Database>,
     {
-        self.execute_many(query).try_collect().boxed()
+        self.execute_many(query).try_collect().boxed_local()
     }
 
     /// Execute multiple queries and return the rows affected from each query, in a stream.
     fn execute_many<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxStream<'e, Result<<Self::Database as Database>::QueryResult, Error>>
+    ) -> LocalBoxStream<'e, Result<<Self::Database as Database>::QueryResult, Error>>
     where
         'c: 'e,
         E: 'q + Execute<'q, Self::Database>,
@@ -61,14 +61,14 @@ pub trait Executor<'c>: Send + Debug + Sized {
                     Either::Right(_) => None,
                 })
             })
-            .boxed()
+            .boxed_local()
     }
 
     /// Execute the query and return the generated results as a stream.
     fn fetch<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxStream<'e, Result<<Self::Database as Database>::Row, Error>>
+    ) -> LocalBoxStream<'e, Result<<Self::Database as Database>::Row, Error>>
     where
         'c: 'e,
         E: 'q + Execute<'q, Self::Database>,
@@ -80,7 +80,7 @@ pub trait Executor<'c>: Send + Debug + Sized {
                     Either::Right(row) => Some(row),
                 })
             })
-            .boxed()
+            .boxed_local()
     }
 
     /// Execute multiple queries and return the generated results as a stream
@@ -88,7 +88,7 @@ pub trait Executor<'c>: Send + Debug + Sized {
     fn fetch_many<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxStream<
+    ) -> LocalBoxStream<
         'e,
         Result<
             Either<<Self::Database as Database>::QueryResult, <Self::Database as Database>::Row>,
@@ -103,19 +103,19 @@ pub trait Executor<'c>: Send + Debug + Sized {
     fn fetch_all<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxFuture<'e, Result<Vec<<Self::Database as Database>::Row>, Error>>
+    ) -> LocalBoxFuture<'e, Result<Vec<<Self::Database as Database>::Row>, Error>>
     where
         'c: 'e,
         E: 'q + Execute<'q, Self::Database>,
     {
-        self.fetch(query).try_collect().boxed()
+        self.fetch(query).try_collect().boxed_local()
     }
 
     /// Execute the query and returns exactly one row.
     fn fetch_one<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxFuture<'e, Result<<Self::Database as Database>::Row, Error>>
+    ) -> LocalBoxFuture<'e, Result<<Self::Database as Database>::Row, Error>>
     where
         'c: 'e,
         E: 'q + Execute<'q, Self::Database>,
@@ -125,14 +125,14 @@ pub trait Executor<'c>: Send + Debug + Sized {
                 Some(row) => future::ok(row),
                 None => future::err(Error::RowNotFound),
             })
-            .boxed()
+            .boxed_local()
     }
 
     /// Execute the query and returns at most one row.
     fn fetch_optional<'e, 'q: 'e, E>(
         self,
         query: E,
-    ) -> BoxFuture<'e, Result<Option<<Self::Database as Database>::Row>, Error>>
+    ) -> LocalBoxFuture<'e, Result<Option<<Self::Database as Database>::Row>, Error>>
     where
         'c: 'e,
         E: 'q + Execute<'q, Self::Database>;
@@ -149,7 +149,7 @@ pub trait Executor<'c>: Send + Debug + Sized {
     fn prepare<'e, 'q: 'e>(
         self,
         query: &'q str,
-    ) -> BoxFuture<'e, Result<<Self::Database as Database>::Statement<'q>, Error>>
+    ) -> LocalBoxFuture<'e, Result<<Self::Database as Database>::Statement<'q>, Error>>
     where
         'c: 'e,
     {
@@ -165,7 +165,7 @@ pub trait Executor<'c>: Send + Debug + Sized {
         self,
         sql: &'q str,
         parameters: &'e [<Self::Database as Database>::TypeInfo],
-    ) -> BoxFuture<'e, Result<<Self::Database as Database>::Statement<'q>, Error>>
+    ) -> LocalBoxFuture<'e, Result<<Self::Database as Database>::Statement<'q>, Error>>
     where
         'c: 'e;
 
@@ -178,7 +178,7 @@ pub trait Executor<'c>: Send + Debug + Sized {
     fn describe<'e, 'q: 'e>(
         self,
         sql: &'q str,
-    ) -> BoxFuture<'e, Result<Describe<Self::Database>, Error>>
+    ) -> LocalBoxFuture<'e, Result<Describe<Self::Database>, Error>>
     where
         'c: 'e;
 }

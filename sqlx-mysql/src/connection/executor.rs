@@ -18,8 +18,8 @@ use crate::{
     MySqlValueFormat,
 };
 use either::Either;
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use futures_core::Stream;
 use futures_util::TryStreamExt;
 use std::{borrow::Cow, pin::pin, sync::Arc};
@@ -250,7 +250,7 @@ impl<'c> Executor<'c> for &'c mut MySqlConnection {
     fn fetch_many<'e, 'q, E>(
         self,
         mut query: E,
-    ) -> BoxStream<'e, Result<Either<MySqlQueryResult, MySqlRow>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<MySqlQueryResult, MySqlRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
@@ -273,7 +273,10 @@ impl<'c> Executor<'c> for &'c mut MySqlConnection {
         })
     }
 
-    fn fetch_optional<'e, 'q, E>(self, query: E) -> BoxFuture<'e, Result<Option<MySqlRow>, Error>>
+    fn fetch_optional<'e, 'q, E>(
+        self,
+        query: E,
+    ) -> LocalBoxFuture<'e, Result<Option<MySqlRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
@@ -297,7 +300,7 @@ impl<'c> Executor<'c> for &'c mut MySqlConnection {
         self,
         sql: &'q str,
         _parameters: &'e [MySqlTypeInfo],
-    ) -> BoxFuture<'e, Result<MySqlStatement<'q>, Error>>
+    ) -> LocalBoxFuture<'e, Result<MySqlStatement<'q>, Error>>
     where
         'c: 'e,
     {
@@ -326,7 +329,10 @@ impl<'c> Executor<'c> for &'c mut MySqlConnection {
     }
 
     #[doc(hidden)]
-    fn describe<'e, 'q: 'e>(self, sql: &'q str) -> BoxFuture<'e, Result<Describe<MySql>, Error>>
+    fn describe<'e, 'q: 'e>(
+        self,
+        sql: &'q str,
+    ) -> LocalBoxFuture<'e, Result<Describe<MySql>, Error>>
     where
         'c: 'e,
     {

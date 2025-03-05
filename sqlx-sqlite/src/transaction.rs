@@ -1,4 +1,4 @@
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use crate::{Sqlite, SqliteConnection};
 use sqlx_core::error::Error;
@@ -10,15 +10,15 @@ pub struct SqliteTransactionManager;
 impl TransactionManager for SqliteTransactionManager {
     type Database = Sqlite;
 
-    fn begin(conn: &mut SqliteConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn begin(conn: &mut SqliteConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(conn.worker.begin())
     }
 
-    fn commit(conn: &mut SqliteConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn commit(conn: &mut SqliteConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(conn.worker.commit())
     }
 
-    fn rollback(conn: &mut SqliteConnection) -> BoxFuture<'_, Result<(), Error>> {
+    fn rollback(conn: &mut SqliteConnection) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(conn.worker.rollback())
     }
 

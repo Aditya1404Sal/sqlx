@@ -1,5 +1,5 @@
 use either::Either;
-use futures_core::stream::BoxStream;
+use futures_core::stream::LocalBoxStream;
 use futures_util::{StreamExt, TryFutureExt, TryStreamExt};
 
 use crate::arguments::IntoArguments;
@@ -85,7 +85,7 @@ where
 {
     /// Execute the query and return the generated results as a stream.
     #[inline]
-    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> BoxStream<'e, Result<O, Error>>
+    pub fn fetch<'e, 'c: 'e, E>(self, executor: E) -> LocalBoxStream<'e, Result<O, Error>>
     where
         'q: 'e,
         E: 'e + Executor<'c, Database = DB>,
@@ -93,7 +93,7 @@ where
         A: 'e,
         O: 'e,
     {
-        self.inner.fetch(executor).map_ok(|it| it.0).boxed()
+        self.inner.fetch(executor).map_ok(|it| it.0).boxed_local()
     }
 
     /// Execute multiple queries and return the generated results as a stream
@@ -103,7 +103,7 @@ where
     pub fn fetch_many<'e, 'c: 'e, E>(
         self,
         executor: E,
-    ) -> BoxStream<'e, Result<Either<DB::QueryResult, O>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<DB::QueryResult, O>, Error>>
     where
         'q: 'e,
         E: 'e + Executor<'c, Database = DB>,
@@ -115,7 +115,7 @@ where
         self.inner
             .fetch_many(executor)
             .map_ok(|v| v.map_right(|it| it.0))
-            .boxed()
+            .boxed_local()
     }
 
     /// Execute the query and return all the resulting rows collected into a [`Vec`].

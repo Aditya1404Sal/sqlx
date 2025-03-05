@@ -1,8 +1,8 @@
 use crate::{
     Sqlite, SqliteConnection, SqliteQueryResult, SqliteRow, SqliteStatement, SqliteTypeInfo,
 };
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use futures_util::{stream, FutureExt, StreamExt, TryFutureExt, TryStreamExt};
 use sqlx_core::describe::Describe;
 use sqlx_core::error::Error;
@@ -16,7 +16,7 @@ impl<'c> Executor<'c> for &'c mut SqliteConnection {
     fn fetch_many<'e, 'q, E>(
         self,
         mut query: E,
-    ) -> BoxStream<'e, Result<Either<SqliteQueryResult, SqliteRow>, Error>>
+    ) -> LocalBoxStream<'e, Result<Either<SqliteQueryResult, SqliteRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
@@ -26,7 +26,7 @@ impl<'c> Executor<'c> for &'c mut SqliteConnection {
         let sql = query.sql();
         let arguments = match query.take_arguments().map_err(Error::Encode) {
             Ok(arguments) => arguments,
-            Err(error) => return stream::once(future::ready(Err(error))).boxed(),
+            Err(error) => return stream::once(future::ready(Err(error))).boxed_local(),
         };
         let persistent = query.persistent() && arguments.is_some();
 
@@ -41,7 +41,7 @@ impl<'c> Executor<'c> for &'c mut SqliteConnection {
     fn fetch_optional<'e, 'q, E>(
         self,
         mut query: E,
-    ) -> BoxFuture<'e, Result<Option<SqliteRow>, Error>>
+    ) -> LocalBoxFuture<'e, Result<Option<SqliteRow>, Error>>
     where
         'c: 'e,
         E: Execute<'q, Self::Database>,
@@ -51,7 +51,7 @@ impl<'c> Executor<'c> for &'c mut SqliteConnection {
         let sql = query.sql();
         let arguments = match query.take_arguments().map_err(Error::Encode) {
             Ok(arguments) => arguments,
-            Err(error) => return future::ready(Err(error)).boxed(),
+            Err(error) => return future::ready(Err(error)).boxed_local(),
         };
         let persistent = query.persistent() && arguments.is_some();
 
@@ -76,7 +76,7 @@ impl<'c> Executor<'c> for &'c mut SqliteConnection {
         self,
         sql: &'q str,
         _parameters: &[SqliteTypeInfo],
-    ) -> BoxFuture<'e, Result<SqliteStatement<'q>, Error>>
+    ) -> LocalBoxFuture<'e, Result<SqliteStatement<'q>, Error>>
     where
         'c: 'e,
     {
@@ -91,7 +91,10 @@ impl<'c> Executor<'c> for &'c mut SqliteConnection {
     }
 
     #[doc(hidden)]
-    fn describe<'e, 'q: 'e>(self, sql: &'q str) -> BoxFuture<'e, Result<Describe<Sqlite>, Error>>
+    fn describe<'e, 'q: 'e>(
+        self,
+        sql: &'q str,
+    ) -> LocalBoxFuture<'e, Result<Describe<Sqlite>, Error>>
     where
         'c: 'e,
     {

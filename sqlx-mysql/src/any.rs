@@ -4,8 +4,8 @@ use crate::{
     MySqlTransactionManager, MySqlTypeInfo,
 };
 use either::Either;
-use futures_core::future::BoxFuture;
-use futures_core::stream::BoxStream;
+use futures_core::future::LocalBoxFuture;
+use futures_core::stream::LocalBoxStream;
 use futures_util::{stream, StreamExt, TryFutureExt, TryStreamExt};
 use sqlx_core::any::{
     Any, AnyArguments, AnyColumn, AnyConnectOptions, AnyConnectionBackend, AnyQueryResult, AnyRow,
@@ -25,27 +25,27 @@ impl AnyConnectionBackend for MySqlConnection {
         <MySql as Database>::NAME
     }
 
-    fn close(self: Box<Self>) -> BoxFuture<'static, sqlx_core::Result<()>> {
+    fn close(self: Box<Self>) -> LocalBoxFuture<'static, sqlx_core::Result<()>> {
         Connection::close(*self)
     }
 
-    fn close_hard(self: Box<Self>) -> BoxFuture<'static, sqlx_core::Result<()>> {
+    fn close_hard(self: Box<Self>) -> LocalBoxFuture<'static, sqlx_core::Result<()>> {
         Connection::close_hard(*self)
     }
 
-    fn ping(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn ping(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         Connection::ping(self)
     }
 
-    fn begin(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn begin(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         MySqlTransactionManager::begin(self)
     }
 
-    fn commit(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn commit(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         MySqlTransactionManager::commit(self)
     }
 
-    fn rollback(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn rollback(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         MySqlTransactionManager::rollback(self)
     }
 
@@ -57,7 +57,7 @@ impl AnyConnectionBackend for MySqlConnection {
         Connection::shrink_buffers(self);
     }
 
-    fn flush(&mut self) -> BoxFuture<'_, sqlx_core::Result<()>> {
+    fn flush(&mut self) -> LocalBoxFuture<'_, sqlx_core::Result<()>> {
         Connection::flush(self)
     }
 
@@ -77,12 +77,13 @@ impl AnyConnectionBackend for MySqlConnection {
         query: &'q str,
         persistent: bool,
         arguments: Option<AnyArguments<'q>>,
-    ) -> BoxStream<'q, sqlx_core::Result<Either<AnyQueryResult, AnyRow>>> {
+    ) -> LocalBoxStream<'q, sqlx_core::Result<Either<AnyQueryResult, AnyRow>>> {
         let persistent = persistent && arguments.is_some();
         let arguments = match arguments.as_ref().map(AnyArguments::convert_to).transpose() {
             Ok(arguments) => arguments,
             Err(error) => {
-                return stream::once(future::ready(Err(sqlx_core::Error::Encode(error)))).boxed()
+                return stream::once(future::ready(Err(sqlx_core::Error::Encode(error))))
+                    .boxed_local()
             }
         };
 
@@ -103,7 +104,7 @@ impl AnyConnectionBackend for MySqlConnection {
         query: &'q str,
         persistent: bool,
         arguments: Option<AnyArguments<'q>>,
-    ) -> BoxFuture<'q, sqlx_core::Result<Option<AnyRow>>> {
+    ) -> LocalBoxFuture<'q, sqlx_core::Result<Option<AnyRow>>> {
         let persistent = persistent && arguments.is_some();
         let arguments = arguments
             .as_ref()
@@ -129,7 +130,7 @@ impl AnyConnectionBackend for MySqlConnection {
         &'c mut self,
         sql: &'q str,
         _parameters: &[AnyTypeInfo],
-    ) -> BoxFuture<'c, sqlx_core::Result<AnyStatement<'q>>> {
+    ) -> LocalBoxFuture<'c, sqlx_core::Result<AnyStatement<'q>>> {
         Box::pin(async move {
             let statement = Executor::prepare_with(self, sql, &[]).await?;
             AnyStatement::try_from_statement(
@@ -140,7 +141,10 @@ impl AnyConnectionBackend for MySqlConnection {
         })
     }
 
-    fn describe<'q>(&'q mut self, sql: &'q str) -> BoxFuture<'q, sqlx_core::Result<Describe<Any>>> {
+    fn describe<'q>(
+        &'q mut self,
+        sql: &'q str,
+    ) -> LocalBoxFuture<'q, sqlx_core::Result<Describe<Any>>> {
         Box::pin(async move {
             let describe = Executor::describe(self, sql).await?;
             describe.try_into_any()

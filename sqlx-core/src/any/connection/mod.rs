@@ -1,4 +1,4 @@
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use crate::any::{Any, AnyConnectOptions};
 use crate::connection::{ConnectOptions, Connection};
@@ -32,7 +32,7 @@ impl AnyConnection {
         self.backend.name()
     }
 
-    pub(crate) fn connect(options: &AnyConnectOptions) -> BoxFuture<'_, crate::Result<Self>> {
+    pub(crate) fn connect(options: &AnyConnectOptions) -> LocalBoxFuture<'_, crate::Result<Self>> {
         Box::pin(async {
             let driver = crate::any::driver::from_url(&options.database_url)?;
             (driver.connect)(options).await
@@ -41,7 +41,7 @@ impl AnyConnection {
 
     pub(crate) fn connect_with_db<DB: Database>(
         options: &AnyConnectOptions,
-    ) -> BoxFuture<'_, crate::Result<Self>>
+    ) -> LocalBoxFuture<'_, crate::Result<Self>>
     where
         DB::Connection: AnyConnectionBackend,
         <DB::Connection as Connection>::Options:
@@ -71,19 +71,19 @@ impl Connection for AnyConnection {
 
     type Options = AnyConnectOptions;
 
-    fn close(self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close(self) -> LocalBoxFuture<'static, Result<(), Error>> {
         self.backend.close()
     }
 
-    fn close_hard(self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close_hard(self) -> LocalBoxFuture<'static, Result<(), Error>> {
         self.backend.close()
     }
 
-    fn ping(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn ping(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         self.backend.ping()
     }
 
-    fn begin(&mut self) -> BoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
+    fn begin(&mut self) -> LocalBoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
     where
         Self: Sized,
     {
@@ -94,7 +94,7 @@ impl Connection for AnyConnection {
         self.backend.cached_statements_size()
     }
 
-    fn clear_cached_statements(&mut self) -> BoxFuture<'_, crate::Result<()>> {
+    fn clear_cached_statements(&mut self) -> LocalBoxFuture<'_, crate::Result<()>> {
         self.backend.clear_cached_statements()
     }
 
@@ -103,7 +103,7 @@ impl Connection for AnyConnection {
     }
 
     #[doc(hidden)]
-    fn flush(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn flush(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         self.backend.flush()
     }
 

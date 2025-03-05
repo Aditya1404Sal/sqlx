@@ -1,7 +1,7 @@
 use crate::any::AnyConnection;
 use crate::connection::{ConnectOptions, LogSettings};
 use crate::error::Error;
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use log::LevelFilter;
 use std::str::FromStr;
 use std::time::Duration;
@@ -48,7 +48,7 @@ impl ConnectOptions for AnyConnectOptions {
     }
 
     #[inline]
-    fn connect(&self) -> BoxFuture<'_, Result<AnyConnection, Error>> {
+    fn connect(&self) -> LocalBoxFuture<'_, Result<AnyConnection, Error>> {
         AnyConnection::connect(self)
     }
 

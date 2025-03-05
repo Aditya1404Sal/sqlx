@@ -1,6 +1,6 @@
 use std::fmt::{self, Debug, Formatter};
 
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 use futures_util::FutureExt;
 pub(crate) use sqlx_core::connection::*;
 pub(crate) use stream::{MySqlStream, Waiting};
@@ -52,7 +52,7 @@ impl Connection for MySqlConnection {
 
     type Options = MySqlConnectOptions;
 
-    fn close(mut self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close(mut self) -> LocalBoxFuture<'static, Result<(), Error>> {
         Box::pin(async move {
             self.inner.stream.send_packet(Quit).await?;
             self.inner.stream.shutdown().await?;
@@ -61,14 +61,14 @@ impl Connection for MySqlConnection {
         })
     }
 
-    fn close_hard(mut self) -> BoxFuture<'static, Result<(), Error>> {
+    fn close_hard(mut self) -> LocalBoxFuture<'static, Result<(), Error>> {
         Box::pin(async move {
             self.inner.stream.shutdown().await?;
             Ok(())
         })
     }
 
-    fn ping(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn ping(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             self.inner.stream.wait_until_ready().await?;
             self.inner.stream.send_packet(Ping).await?;
@@ -79,15 +79,15 @@ impl Connection for MySqlConnection {
     }
 
     #[doc(hidden)]
-    fn flush(&mut self) -> BoxFuture<'_, Result<(), Error>> {
-        self.inner.stream.wait_until_ready().boxed()
+    fn flush(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
+        self.inner.stream.wait_until_ready().boxed_local()
     }
 
     fn cached_statements_size(&self) -> usize {
         self.inner.cache_statement.len()
     }
 
-    fn clear_cached_statements(&mut self) -> BoxFuture<'_, Result<(), Error>> {
+    fn clear_cached_statements(&mut self) -> LocalBoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             while let Some((statement_id, _)) = self.inner.cache_statement.remove_lru() {
                 self.inner
@@ -107,7 +107,7 @@ impl Connection for MySqlConnection {
         !self.inner.stream.write_buffer().is_empty()
     }
 
-    fn begin(&mut self) -> BoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
+    fn begin(&mut self) -> LocalBoxFuture<'_, Result<Transaction<'_, Self::Database>, Error>>
     where
         Self: Sized,
     {

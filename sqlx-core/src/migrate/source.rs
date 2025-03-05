@@ -1,6 +1,6 @@
 use crate::error::BoxDynError;
 use crate::migrate::{Migration, MigrationType};
-use futures_core::future::BoxFuture;
+use futures_core::future::LocalBoxFuture;
 
 use std::borrow::Cow;
 use std::fmt::Debug;
@@ -23,11 +23,11 @@ use std::path::{Path, PathBuf};
 /// `_sqlx_migrations` table (stored in the database). If a migration's hash
 /// changes and it has already been run, this will cause an error.
 pub trait MigrationSource<'s>: Debug {
-    fn resolve(self) -> BoxFuture<'s, Result<Vec<Migration>, BoxDynError>>;
+    fn resolve(self) -> LocalBoxFuture<'s, Result<Vec<Migration>, BoxDynError>>;
 }
 
 impl<'s> MigrationSource<'s> for &'s Path {
-    fn resolve(self) -> BoxFuture<'s, Result<Vec<Migration>, BoxDynError>> {
+    fn resolve(self) -> LocalBoxFuture<'s, Result<Vec<Migration>, BoxDynError>> {
         Box::pin(async move {
             let canonical = self.canonicalize()?;
             let migrations_with_paths =
@@ -39,7 +39,7 @@ impl<'s> MigrationSource<'s> for &'s Path {
 }
 
 impl MigrationSource<'static> for PathBuf {
-    fn resolve(self) -> BoxFuture<'static, Result<Vec<Migration>, BoxDynError>> {
+    fn resolve(self) -> LocalBoxFuture<'static, Result<Vec<Migration>, BoxDynError>> {
         Box::pin(async move { self.as_path().resolve().await })
     }
 }
