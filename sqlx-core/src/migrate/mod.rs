@@ -13,5 +13,9 @@ pub use migration_type::MigrationType;
 pub use migrator::Migrator;
 pub use source::MigrationSource;
 
+#[cfg(target_arch = "wasm32")]
+#[doc(hidden)]
+pub use source::resolve;
+#[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
 pub use source::resolve_blocking;

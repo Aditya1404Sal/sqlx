@@ -318,7 +318,7 @@ impl<C: DerefMut<Target = PgConnection>> Drop for PgCopyIn<C> {
     }
 }
 
-async fn pg_begin_copy_out<'c, C: DerefMut<Target = PgConnection> + Send + 'c>(
+async fn pg_begin_copy_out<'c, C: DerefMut<Target = PgConnection> + 'c>(
     mut conn: C,
     statement: &str,
 ) -> Result<LocalBoxStream<'c, Result<Bytes>>> {

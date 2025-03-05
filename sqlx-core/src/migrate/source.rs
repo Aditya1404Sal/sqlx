@@ -4,7 +4,6 @@ use futures_core::future::LocalBoxFuture;
 
 use std::borrow::Cow;
 use std::fmt::Debug;
-use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -30,8 +29,11 @@ impl<'s> MigrationSource<'s> for &'s Path {
     fn resolve(self) -> LocalBoxFuture<'s, Result<Vec<Migration>, BoxDynError>> {
         Box::pin(async move {
             let canonical = self.canonicalize()?;
+            #[cfg(not(target_arch = "wasm32"))]
             let migrations_with_paths =
                 crate::rt::spawn_blocking(move || resolve_blocking(&canonical)).await?;
+            #[cfg(target_arch = "wasm32")]
+            let migrations_with_paths = resolve(&canonical).await?;
 
             Ok(migrations_with_paths.into_iter().map(|(m, _p)| m).collect())
         })
@@ -54,7 +56,17 @@ pub struct ResolveError {
 
 // FIXME: paths should just be part of `Migration` but we can't add a field backwards compatibly
 // since it's `#[non_exhaustive]`.
+#[cfg(target_arch = "wasm32")]
+pub async fn resolve(path: &Path) -> Result<Vec<(Migration, PathBuf)>, ResolveError> {
+    todo!();
+}
+
+// FIXME: paths should just be part of `Migration` but we can't add a field backwards compatibly
+// since it's `#[non_exhaustive]`.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn resolve_blocking(path: &Path) -> Result<Vec<(Migration, PathBuf)>, ResolveError> {
+    use std::fs;
+
     let s = fs::read_dir(path).map_err(|e| ResolveError {
         message: format!("error reading migration directory {}: {e}", path.display()),
         source: Some(e),

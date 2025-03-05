@@ -55,7 +55,7 @@ pub fn block_on<F>(f: F) -> F::Output
 where
     F: std::future::Future,
 {
-    #[cfg(feature = "_rt-tokio")]
+    #[cfg(any(feature = "_rt-tokio", target_arch = "wasm32"))]
     {
         use once_cell::sync::Lazy;
         use tokio::runtime::{self, Runtime};
@@ -77,6 +77,6 @@ where
         async_std::task::block_on(f)
     }
 
-    #[cfg(not(any(feature = "_rt-async-std", feature = "tokio")))]
+    #[cfg(not(any(feature = "_rt-async-std", feature = "tokio", target_arch = "wasm32")))]
     sqlx_core::rt::missing_rt(f)
 }

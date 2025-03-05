@@ -56,7 +56,6 @@ bitflags = { version = "2", default-features = false }
 byteorder = { version = "1.4.3", default-features = false, features = ["std"] }
 dotenvy = { workspace = true }
 hex = "0.4.3"
-home = "0.5.5"
 itoa = "1.0.1"
 log = "0.4.18"
 memchr = { version = "2.4.1", default-features = false }
@@ -79,6 +78,9 @@ features = ["json"]
 [dev-dependencies.sqlx]
 workspace = true
 features = ["postgres", "derive"]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+home = "0.5.5"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 etcetera = "0.8.0"

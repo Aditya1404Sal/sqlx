@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use futures::SinkExt as _;
 use sqlx::postgres::PgPool;
 use std::env;
 
@@ -14,27 +15,26 @@ enum Command {
     Done { id: i64 },
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
+async fn run() -> anyhow::Result<()> {
+    let args = Args::parse_from(wasi::cli::environment::get_arguments());
     let pool = PgPool::connect(&env::var("DATABASE_URL")?).await?;
 
     match args.cmd {
         Some(Command::Add { description }) => {
-            println!("Adding new todo with description '{description}'");
+            eprintln!("Adding new todo with description '{description}'");
             let todo_id = add_todo(&pool, description).await?;
-            println!("Added new todo with id {todo_id}");
+            eprintln!("Added new todo with id {todo_id}");
         }
         Some(Command::Done { id }) => {
-            println!("Marking todo {id} as done");
+            eprintln!("Marking todo {id} as done");
             if complete_todo(&pool, id).await? {
-                println!("Todo {id} is marked as done");
+                eprintln!("Todo {id} is marked as done");
             } else {
-                println!("Invalid id {id}");
+                eprintln!("Invalid id {id}");
             }
         }
         None => {
-            println!("Printing list of all todos");
+            eprintln!("Printing list of all todos");
             list_todos(&pool).await?;
         }
     }
@@ -85,7 +85,7 @@ ORDER BY id
     .await?;
 
     for rec in recs {
-        println!(
+        eprintln!(
             "- [{}] {}: {}",
             if rec.done { "x" } else { " " },
             rec.id,
@@ -94,4 +94,25 @@ ORDER BY id
     }
 
     Ok(())
+}
+
+struct Component;
+
+wasi::cli::command::export!(Component);
+
+impl wasi::exports::cli::run::Guest for Component {
+    async fn run() -> Result<(), ()> {
+        tokio::task::LocalSet::new()
+            .run_until(async {
+                if let Err(err) = run().await {
+                    let (mut tx, rx) = wasi::wit_stream::new();
+                    wasi::cli::stderr::set_stderr(rx);
+                    tx.send(format!("{err:#}\n").into()).await.or(Err(()))?;
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            })
+            .await
+    }
 }

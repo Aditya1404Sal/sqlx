@@ -217,7 +217,7 @@ impl<S: Socket> MySqlStream<S> {
 
     pub fn boxed_socket(self) -> MySqlStream {
         MySqlStream {
-            socket: self.socket.boxed_local(),
+            socket: self.socket.boxed(),
             server_version: self.server_version,
             capabilities: self.capabilities,
             sequence_id: self.sequence_id,

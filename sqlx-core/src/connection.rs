@@ -10,7 +10,7 @@ use std::time::Duration;
 use url::Url;
 
 /// Represents a single database connection.
-pub trait Connection: Send {
+pub trait Connection {
     type Database: Database<Connection = Self>;
 
     type Options: ConnectOptions<Connection = Self>;

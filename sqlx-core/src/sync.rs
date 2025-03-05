@@ -30,7 +30,7 @@ pub struct AsyncSemaphore {
 impl AsyncSemaphore {
     #[track_caller]
     pub fn new(fair: bool, permits: usize) -> Self {
-        if cfg!(not(any(feature = "_rt-async-std", feature = "_rt-tokio"))) {
+        if cfg!(not(any(feature = "_rt-async-std", feature = "_rt-tokio",))) {
             crate::rt::missing_rt((fair, permits));
         }
 
@@ -52,7 +52,7 @@ impl AsyncSemaphore {
         #[cfg(feature = "_rt-tokio")]
         return self.inner.available_permits();
 
-        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio")))]
+        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio",)))]
         crate::rt::missing_rt(())
     }
 
@@ -73,7 +73,7 @@ impl AsyncSemaphore {
                 .expect("BUG: we do not expose the `.close()` method"),
         };
 
-        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio")))]
+        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio",)))]
         crate::rt::missing_rt(permits)
     }
 
@@ -88,7 +88,7 @@ impl AsyncSemaphore {
             inner: self.inner.try_acquire_many(permits).ok()?,
         });
 
-        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio")))]
+        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio",)))]
         crate::rt::missing_rt(permits)
     }
 
@@ -99,7 +99,7 @@ impl AsyncSemaphore {
         #[cfg(feature = "_rt-tokio")]
         return self.inner.add_permits(permits);
 
-        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio")))]
+        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio",)))]
         crate::rt::missing_rt(permits)
     }
 }
@@ -120,7 +120,7 @@ pub struct AsyncSemaphoreReleaser<'a> {
     #[cfg(feature = "_rt-tokio")]
     inner: tokio::sync::SemaphorePermit<'a>,
 
-    #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio")))]
+    #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio",)))]
     _phantom: std::marker::PhantomData<&'a ()>,
 }
 
@@ -137,7 +137,7 @@ impl AsyncSemaphoreReleaser<'_> {
             this.inner.disarm();
         }
 
-        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio")))]
+        #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio",)))]
         crate::rt::missing_rt(())
     }
 }

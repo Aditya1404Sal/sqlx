@@ -69,7 +69,7 @@ impl AnyConnectionBackend for SqliteConnection {
     #[cfg(feature = "migrate")]
     fn as_migrate(
         &mut self,
-    ) -> sqlx_core::Result<&mut (dyn sqlx_core::migrate::Migrate + Send + 'static)> {
+    ) -> sqlx_core::Result<&mut (dyn sqlx_core::migrate::Migrate + 'static)> {
         Ok(self)
     }
 

@@ -73,7 +73,7 @@ use std::ops::{Deref, DerefMut};
 pub trait Acquire<'c> {
     type Database: Database;
 
-    type Connection: Deref<Target = <Self::Database as Database>::Connection> + DerefMut + Send;
+    type Connection: Deref<Target = <Self::Database as Database>::Connection> + DerefMut;
 
     fn acquire(self) -> LocalBoxFuture<'c, Result<Self::Connection, Error>>;
 

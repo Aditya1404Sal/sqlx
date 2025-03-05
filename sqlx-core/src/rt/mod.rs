@@ -10,6 +10,9 @@ pub mod rt_async_std;
 #[cfg(feature = "_rt-tokio")]
 pub mod rt_tokio;
 
+//#[cfg(target_arch = "wasm32")]
+pub mod rt_wasip3;
+
 #[derive(Debug, thiserror::Error)]
 #[error("operation timed out")]
 pub struct TimeoutError(());
@@ -24,7 +27,30 @@ pub enum JoinHandle<T> {
 }
 
 pub async fn timeout<F: Future>(duration: Duration, f: F) -> Result<F::Output, TimeoutError> {
-    #[cfg(feature = "_rt-tokio")]
+    #[cfg(target_arch = "wasm32")]
+    {
+        let timeout = crate::rt::rt_wasip3::spawn(wasi::clocks::monotonic_clock::wait_for(
+            duration.as_nanos().try_into().unwrap_or(u64::MAX),
+        ));
+        let mut timeout = core::pin::pin!(timeout);
+        let mut f = core::pin::pin!(f);
+        core::future::poll_fn(|cx| {
+            match timeout.as_mut().poll(cx) {
+                Poll::Ready(Some(())) => {
+                    Poll::Ready(Err(TimeoutError(())))
+                }
+                Poll::Ready(None) => {
+                    Poll::Ready(Err(TimeoutError(())))
+                }
+                Poll::Pending => {
+                    f.as_mut().poll(cx).map(Ok)
+                }
+            }
+        })
+        .await
+    }
+
+    #[cfg(all(feature = "_rt-tokio", not(target_arch = "wasm32")))]
     if rt_tokio::available() {
         return tokio::time::timeout(duration, f)
             .await
@@ -38,11 +64,20 @@ pub async fn timeout<F: Future>(duration: Duration, f: F) -> Result<F::Output, T
             .map_err(|_| TimeoutError(()))
     }
 
-    #[cfg(not(feature = "_rt-async-std"))]
+    #[cfg(not(any(feature = "_rt-async-std", target_arch = "wasm32")))]
     missing_rt((duration, f))
 }
 
 pub async fn sleep(duration: Duration) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        return crate::rt::rt_wasip3::spawn(wasi::clocks::monotonic_clock::wait_for(
+            duration.as_nanos().try_into().unwrap_or(u64::MAX),
+        ))
+        .await
+        .unwrap();
+    }
+
     #[cfg(feature = "_rt-tokio")]
     if rt_tokio::available() {
         return tokio::time::sleep(duration).await;
@@ -53,19 +88,20 @@ pub async fn sleep(duration: Duration) {
         async_std::task::sleep(duration).await
     }
 
-    #[cfg(not(feature = "_rt-async-std"))]
+    #[cfg(not(any(feature = "_rt-async-std", target_arch = "wasm32")))]
     missing_rt(duration)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[track_caller]
 pub fn spawn<F>(fut: F) -> JoinHandle<F::Output>
 where
-    F: Future + Send + 'static,
-    F::Output: Send + 'static,
+    F: Future + 'static,
+    F::Output: 'static,
 {
     #[cfg(feature = "_rt-tokio")]
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        return JoinHandle::Tokio(handle.spawn(fut));
+    if let Ok(..) = tokio::runtime::Handle::try_current() {
+        return JoinHandle::Tokio(tokio::task::spawn_local(fut));
     }
 
     #[cfg(feature = "_rt-async-std")]
@@ -73,10 +109,21 @@ where
         JoinHandle::AsyncStd(async_std::task::spawn(fut))
     }
 
-    #[cfg(not(feature = "_rt-async-std"))]
+    #[cfg(not(any(feature = "_rt-async-std", target_arch = "wasm32")))]
     missing_rt(fut)
 }
 
+#[cfg(target_arch = "wasm32")]
+#[track_caller]
+pub fn spawn<F>(fut: F) -> JoinHandle<F::Output>
+where
+    F: Future + 'static,
+    F::Output: 'static,
+{
+    JoinHandle::Tokio(tokio::task::spawn_local(fut))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[track_caller]
 pub fn spawn_blocking<F, R>(f: F) -> JoinHandle<R>
 where
@@ -114,7 +161,7 @@ pub async fn yield_now() {
 
 #[track_caller]
 pub fn test_block_on<F: Future>(f: F) -> F::Output {
-    #[cfg(feature = "_rt-tokio")]
+    #[cfg(any(feature = "_rt-tokio", target_arch = "wasm32"))]
     {
         return tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -123,12 +170,19 @@ pub fn test_block_on<F: Future>(f: F) -> F::Output {
             .block_on(f);
     }
 
-    #[cfg(all(feature = "_rt-async-std", not(feature = "_rt-tokio")))]
+    #[cfg(all(
+        feature = "_rt-async-std",
+        not(any(feature = "_rt-tokio", target_arch = "wasm32"))
+    ))]
     {
         async_std::task::block_on(f)
     }
 
-    #[cfg(not(any(feature = "_rt-async-std", feature = "_rt-tokio")))]
+    #[cfg(not(any(
+        feature = "_rt-async-std",
+        feature = "_rt-tokio",
+        target_arch = "wasm32"
+    )))]
     {
         missing_rt(f)
     }
@@ -151,7 +205,7 @@ impl<T: Send + 'static> Future for JoinHandle<T> {
         match &mut *self {
             #[cfg(feature = "_rt-async-std")]
             Self::AsyncStd(handle) => Pin::new(handle).poll(cx),
-            #[cfg(feature = "_rt-tokio")]
+            #[cfg(any(feature = "_rt-tokio", target_arch = "wasm32"))]
             Self::Tokio(handle) => Pin::new(handle)
                 .poll(cx)
                 .map(|res| res.expect("spawned task panicked")),

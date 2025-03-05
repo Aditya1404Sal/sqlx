@@ -5,7 +5,7 @@ use futures_core::future::LocalBoxFuture;
 use futures_core::stream::LocalBoxStream;
 use std::fmt::Debug;
 
-pub trait AnyConnectionBackend: std::any::Any + Debug + Send + 'static {
+pub trait AnyConnectionBackend: std::any::Any + Debug + 'static {
     /// The backend name.
     fn name(&self) -> &str;
 
@@ -57,7 +57,7 @@ pub trait AnyConnectionBackend: std::any::Any + Debug + Send + 'static {
     fn should_flush(&self) -> bool;
 
     #[cfg(feature = "migrate")]
-    fn as_migrate(&mut self) -> crate::Result<&mut (dyn crate::migrate::Migrate + Send + 'static)> {
+    fn as_migrate(&mut self) -> crate::Result<&mut (dyn crate::migrate::Migrate + 'static)> {
         Err(crate::Error::Configuration(
             format!(
                 "{} driver does not support migrations or `migrate` feature was not enabled",

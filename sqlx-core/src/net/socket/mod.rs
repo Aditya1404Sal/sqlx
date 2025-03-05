@@ -77,7 +77,9 @@ where
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
                     ready!(this.socket.poll_read_ready(cx))?;
                 }
-                ready => return Poll::Ready(ready),
+                ready => {
+                    return Poll::Ready(ready);
+                }
             }
         }
 
@@ -142,10 +144,7 @@ where
 pub trait WithSocket {
     type Output;
 
-    fn with_socket<S: Socket>(
-        self,
-        socket: S,
-    ) -> impl std::future::Future<Output = Self::Output> + Send;
+    fn with_socket<S: Socket>(self, socket: S) -> impl std::future::Future<Output = Self::Output>;
 }
 
 pub struct SocketIntoBox;
@@ -192,7 +191,7 @@ pub async fn connect_tcp<Ws: WithSocket>(
     // IPv6 addresses in URLs will be wrapped in brackets and the `url` crate doesn't trim those.
     let host = host.trim_matches(&['[', ']'][..]);
 
-    #[cfg(feature = "_rt-tokio")]
+    #[cfg(all(feature = "_rt-tokio", not(target_arch = "wasm32")))]
     if crate::rt::rt_tokio::available() {
         use tokio::net::TcpStream;
 
@@ -200,6 +199,12 @@ pub async fn connect_tcp<Ws: WithSocket>(
         stream.set_nodelay(true)?;
 
         return Ok(with_socket.with_socket(stream).await);
+    }
+
+    #[cfg(all(feature = "_rt-tokio", target_arch = "wasm32"))]
+    {
+        let res = crate::rt::rt_wasip3::connect_tcp(host, port, with_socket).await;
+        return res;
     }
 
     #[cfg(feature = "_rt-async-std")]
@@ -258,6 +263,11 @@ pub async fn connect_uds<P: AsRef<Path>, Ws: WithSocket>(
             let stream = UnixStream::connect(path).await?;
 
             return Ok(with_socket.with_socket(stream).await);
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            todo!("outer socket impl")
         }
 
         #[cfg(feature = "_rt-async-std")]

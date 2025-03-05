@@ -30,7 +30,7 @@ use std::fmt::Debug;
 /// * `&mut transaction` -> `&mut *transaction`
 /// * `&mut connection` -> `&mut *connection`
 ///
-pub trait Executor<'c>: Send + Debug + Sized {
+pub trait Executor<'c>: Debug + Sized {
     type Database: Database;
 
     /// Execute the query and return the total number of rows affected.

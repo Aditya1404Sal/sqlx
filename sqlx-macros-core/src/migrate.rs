@@ -103,7 +103,14 @@ pub(crate) fn expand_migrator(path: &Path) -> crate::Result<TokenStream> {
     })?;
 
     // Use the same code path to resolve migrations at compile time and runtime.
-    let migrations = sqlx_core::migrate::resolve_blocking(&path)?
+    #[cfg(not(target_arch = "wasm32"))]
+    let migrations = sqlx_core::migrate::resolve_blocking(&path)?;
+    #[cfg(target_arch = "wasm32")]
+    let migrations = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap()
+        .block_on(async { sqlx_core::migrate::resolve(&path).await })?;
+    let migrations = migrations
         .into_iter()
         .map(|(migration, path)| QuoteMigration { migration, path });
 

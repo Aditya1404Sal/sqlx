@@ -61,7 +61,7 @@ impl AnyConnection {
     #[cfg(feature = "migrate")]
     pub(crate) fn get_migrate(
         &mut self,
-    ) -> crate::Result<&mut (dyn crate::migrate::Migrate + Send + 'static)> {
+    ) -> crate::Result<&mut (dyn crate::migrate::Migrate + 'static)> {
         self.backend.as_migrate()
     }
 }

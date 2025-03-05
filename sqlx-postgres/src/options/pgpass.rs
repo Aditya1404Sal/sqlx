@@ -20,7 +20,9 @@ pub fn load_password(
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_arch = "wasm32")]
+    let default_file = Some(PathBuf::from(".pgpass")); // TODO: fix
+    #[cfg(all(not(target_os = "windows"), not(target_arch = "wasm32")))]
     let default_file = home::home_dir().map(|path| path.join(".pgpass"));
     #[cfg(target_os = "windows")]
     let default_file = {
