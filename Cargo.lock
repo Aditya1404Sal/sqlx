@@ -3533,9 +3533,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "dotenvy",
  "futures",
  "sqlx",
  "tokio",
+ "wasi 0.14.2+wasi-0.2.4",
 ]
 
 [[package]]
