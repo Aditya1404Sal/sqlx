@@ -7,6 +7,14 @@ workspace = "../../../"
 [lib]
 crate-type = ["cdylib"]
 
+[dependencies.wit-bindgen]
+version = "0.46.0"
+features = ["async"]
+
+[dependencies.wit-bindgen-rt]
+version = "0.44.0" 
+features = ["async"]
+
 [dependencies]
 anyhow = "1.0"
 futures = "0.3"
@@ -15,7 +23,7 @@ clap = { version = "4", features = ["derive"] }
 tokio = { version = "1.20.0", features = ["rt"] }
 dotenvy = "0.15.0"
 sqlx = { path = "../../../", features = ["mysql", "runtime-tokio"] }
-wasi = { workspace = true }
+wasip3 = "0.2.0+wasi-0.3.0-rc-2025-09-16"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 sqlx = { path = "../../../", features = ["tls-native-tls"] }

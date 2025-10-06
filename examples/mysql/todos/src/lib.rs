@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use futures::SinkExt as _;
 use sqlx::mysql::MySqlPool;
 use std::env;
 
@@ -16,7 +15,7 @@ enum Command {
 }
 
 async fn run() -> anyhow::Result<()> {
-    let args = Args::parse_from(wasi::cli::environment::get_arguments());
+    let args = Args::parse_from(wasip3::cli::environment::get_arguments());
     let pool = MySqlPool::connect(&env::var("DATABASE_URL")?).await?;
 
     match args.cmd {
@@ -42,18 +41,19 @@ async fn run() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn add_todo(pool: &MySqlPool, description: String) -> anyhow::Result<i64> {
-    let result = sqlx::query!(
+async fn add_todo(pool: &MySqlPool, description: String) -> anyhow::Result<u64> {
+    let todo_id = sqlx::query!(
         r#"
 INSERT INTO todos ( description )
-VALUES (?)
+VALUES ( ? )
         "#,
         description
     )
     .execute(pool)
-    .await?;
+    .await?
+    .last_insert_id();
 
-    Ok(result.last_insert_id() as i64)
+    Ok(todo_id)
 }
 
 async fn complete_todo(pool: &MySqlPool, id: i64) -> anyhow::Result<bool> {
@@ -95,23 +95,26 @@ ORDER BY id
     Ok(())
 }
 
+wasip3::cli::command::export!(Component);
+
 struct Component;
 
-wasi::cli::command::export!(Component);
-
-impl wasi::exports::cli::run::Guest for Component {
+impl wasip3::exports::cli::run::Guest for Component {
     async fn run() -> Result<(), ()> {
-        tokio::task::LocalSet::new()
-            .run_until(async {
-                if let Err(err) = run().await {
-                    let (mut tx, rx) = wasi::wit_stream::new();
-                    wasi::cli::stderr::set_stderr(rx);
-                    tx.send(format!("{err:#}\n").into()).await.or(Err(()))?;
-                    Err(())
-                } else {
-                    Ok(())
+        if let Err(err) = run().await {
+            let (mut tx, rx) = wasip3::wit_stream::new();
+
+            futures::join!(
+                async { wasip3::cli::stderr::write_via_stream(rx).await.unwrap() },
+                async {
+                    let remaining = tx.write_all(format!("{err:#}\n").into_bytes()).await;
+                    assert!(remaining.is_empty());
+                    drop(tx);
                 }
-            })
-            .await
+            );
+            Err(())
+        } else {
+            Ok(())
+        }
     }
 }

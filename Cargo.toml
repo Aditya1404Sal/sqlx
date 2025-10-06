@@ -153,8 +153,8 @@ uuid = "1.1.2"
 # Common utility crates
 dotenvy = { version = "0.15.0", default-features = false }
 
-wasi = { git = "https://github.com/rvolosatovs/wasi", branch = "feat/p3" }
-
+wasi = { git = "https://github.com/rvolosatovs/wasi", branch = "feat/p3" }  
+wasip3 = "0.2.0"
 # Runtimes
 [workspace.dependencies.async-std]
 version = "1.12"
@@ -201,6 +201,8 @@ libsqlite3-sys = { version = "0.30.1", features = ["bundled-sqlcipher"] }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2.15", features = ["js"] }
 
+[patch.crates-io]
+whoami = { git = "https://github.com/Aditya1404Sal/whoami", branch = "v2" }
 
 # Common lint settings for the workspace
 [workspace.lints.clippy]

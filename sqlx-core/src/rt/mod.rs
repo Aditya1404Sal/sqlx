@@ -29,7 +29,7 @@ pub enum JoinHandle<T> {
 pub async fn timeout<F: Future>(duration: Duration, f: F) -> Result<F::Output, TimeoutError> {
     #[cfg(target_arch = "wasm32")]
     {
-        let timeout = crate::rt::rt_wasip3::spawn(wasi::clocks::monotonic_clock::wait_for(
+        let timeout = crate::rt::rt_wasip3::spawn(wasip3::clocks::monotonic_clock::wait_for(
             duration.as_nanos().try_into().unwrap_or(u64::MAX),
         ));
         let mut timeout = core::pin::pin!(timeout);
@@ -71,7 +71,7 @@ pub async fn timeout<F: Future>(duration: Duration, f: F) -> Result<F::Output, T
 pub async fn sleep(duration: Duration) {
     #[cfg(target_arch = "wasm32")]
     {
-        return crate::rt::rt_wasip3::spawn(wasi::clocks::monotonic_clock::wait_for(
+        return crate::rt::rt_wasip3::spawn(wasip3::clocks::monotonic_clock::wait_for(
             duration.as_nanos().try_into().unwrap_or(u64::MAX),
         ))
         .await

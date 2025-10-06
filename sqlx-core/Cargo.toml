@@ -100,7 +100,8 @@ hashbrown = { version = "0.15.0", default-features = false }
 tokio-util = "0.7"
 
 #[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasi = { workspace = true, features = ["p3"] }
+#wasi = { workspace = true, features = ["p3"] }
+wasip3 = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true, features = ["net", "fs"], optional = true }

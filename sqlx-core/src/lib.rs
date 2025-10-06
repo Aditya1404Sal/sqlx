@@ -15,7 +15,7 @@
 #![recursion_limit = "512"]
 #![warn(future_incompatible, rust_2018_idioms)]
 #![allow(clippy::needless_doctest_main, clippy::type_complexity)]
-#![allow(elided_named_lifetimes)]
+#![allow(mismatched_lifetime_syntaxes)]
 #![allow(unused)] // TODO: Remove
 // The only unsafe code in SQLx is that necessary to interact with native APIs like with SQLite,
 // and that can live in its own separate driver crate.
